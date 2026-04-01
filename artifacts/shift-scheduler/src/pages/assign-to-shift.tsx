@@ -47,6 +47,12 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
+function formatDate(dateStr: string) {
+  return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric", year: "numeric",
+  });
+}
+
 export default function AssignToShiftPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -60,16 +66,22 @@ export default function AssignToShiftPage() {
   const [notes, setNotes] = useState("");
 
   const { data: users } = useListUsers();
-  const { data: assignments, isLoading } = useListDailyAssignments({ date: selectedDate });
+
+  // Fetch all upcoming assignments (today and future)
+  const farFuture = new Date();
+  farFuture.setFullYear(farFuture.getFullYear() + 2);
+  const farFutureStr = farFuture.toISOString().split("T")[0]!;
+  const { data: upcomingAssignments, isLoading } = useListDailyAssignments({ start: today, end: farFutureStr });
+
   const createAssignment = useCreateDailyAssignment();
   const deleteAssignment = useDeleteDailyAssignment();
 
   const activeUsers = users?.filter(u => u.isActive && u.role !== "admin") ?? [];
 
-  const dayAssignments = assignments?.filter(a => a.shiftType === "day") ?? [];
-  const nightAssignments = assignments?.filter(a => a.shiftType === "night") ?? [];
-
-  const assignedUserIds = new Set(assignments?.map(a => a.userId) ?? []);
+  // Check if user is already assigned on the selected date (any shift)
+  const assignedOnSelectedDate = new Set(
+    upcomingAssignments?.filter(a => a.assignedDate === selectedDate).map(a => a.userId) ?? []
+  );
 
   const handleAssign = async () => {
     if (!selectedUserId) {
@@ -77,7 +89,7 @@ export default function AssignToShiftPage() {
       return;
     }
     const uid = parseInt(selectedUserId);
-    if (assignedUserIds.has(uid)) {
+    if (assignedOnSelectedDate.has(uid)) {
       toast({ title: "This person is already assigned on this date", variant: "destructive" });
       return;
     }
@@ -109,8 +121,10 @@ export default function AssignToShiftPage() {
     }
   };
 
-  const formattedDate = new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  const sortedAssignments = [...(upcomingAssignments ?? [])].sort((a, b) => {
+    if (a.assignedDate !== b.assignedDate) return a.assignedDate.localeCompare(b.assignedDate);
+    if (a.shiftType !== b.shiftType) return a.shiftType === "day" ? -1 : 1;
+    return a.lastName.localeCompare(b.lastName);
   });
 
   return (
@@ -133,6 +147,7 @@ export default function AssignToShiftPage() {
                   <Input
                     type="date"
                     value={selectedDate}
+                    min={today}
                     onChange={e => setSelectedDate(e.target.value)}
                   />
                 </div>
@@ -191,74 +206,69 @@ export default function AssignToShiftPage() {
             </Card>
           )}
 
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold">{formattedDate}</h2>
-              <p className="text-sm text-muted-foreground">
-                {(dayAssignments.length + nightAssignments.length) === 0 && !isLoading
-                  ? "No additional assignments for this date."
-                  : `${dayAssignments.length + nightAssignments.length} assignment(s)`}
-              </p>
-            </div>
-
-            {isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {[
-                  { label: "Day Shift", type: "day", list: dayAssignments },
-                  { label: "Night Shift", type: "night", list: nightAssignments },
-                ].map(({ label, type, list }) => (
-                  <Card key={type}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <ShiftTypeBadge type={type} />
-                        {label}
-                        <span className="ml-auto text-muted-foreground font-normal">{list.length} assigned</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {list.length === 0 ? (
-                        <p className="text-sm text-muted-foreground italic">No one assigned</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {list.map((a: DailyAssignment) => (
-                            <li key={a.id} className="flex items-center justify-between gap-2 text-sm">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="min-w-0">
-                                  <span className="font-medium">{a.firstName} {a.lastName}</span>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <RoleBadge role={a.role} />
-                                    {a.notes && (
-                                      <span className="text-xs text-muted-foreground truncate">{a.notes}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              {isAdminOrSgt && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                                  onClick={() => handleRemove(a.id)}
-                                  disabled={deleteAssignment.isPending}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
+          {/* Upcoming assignments list */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>Upcoming Assignments</span>
+                {!isLoading && (
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {sortedAssignments.length} total
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="space-y-2">
+                  {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                </div>
+              ) : sortedAssignments.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic py-4 text-center">No upcoming assignments.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {sortedAssignments.map((a: DailyAssignment) => (
+                    <li key={a.id} className="flex items-center gap-3 py-3">
+                      <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-x-4 items-center sm:grid-cols-[180px_auto_1fr_auto]">
+                        {/* Date */}
+                        <span className="text-sm font-medium text-foreground">
+                          {formatDate(a.assignedDate)}
+                        </span>
+                        {/* Shift type badge */}
+                        <ShiftTypeBadge type={a.shiftType} />
+                        {/* Name + role */}
+                        <div className="hidden sm:flex items-center gap-2 min-w-0">
+                          <span className="font-medium text-sm truncate">
+                            {a.firstName} {a.lastName}
+                          </span>
+                          <RoleBadge role={a.role} />
+                          {a.notes && (
+                            <span className="text-xs text-muted-foreground truncate">{a.notes}</span>
+                          )}
+                        </div>
+                        {/* Mobile: name below date row */}
+                        <div className="sm:hidden col-span-2 mt-1 flex items-center gap-2">
+                          <span className="font-medium text-sm">{a.firstName} {a.lastName}</span>
+                          <RoleBadge role={a.role} />
+                        </div>
+                      </div>
+                      {isAdminOrSgt && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => handleRemove(a.id)}
+                          disabled={deleteAssignment.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppLayout>
