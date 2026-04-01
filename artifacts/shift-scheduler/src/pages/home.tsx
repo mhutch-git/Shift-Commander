@@ -158,7 +158,7 @@ function MiniCalendar({
         {blanks.map((_, i) => <div key={`b${i}`} />)}
         {days.map((d) => {
           const working = d.worksDay || d.worksNight;
-          const baseCell = "relative flex flex-col items-center justify-start pt-1 pb-0.5 rounded-md h-9 transition-colors select-none";
+          const baseCell = "relative flex flex-col items-center justify-start pt-1 pb-0.5 rounded-md h-9 transition-colors select-none border";
           let cellCls = baseCell + " ";
 
           if (d.isToday && working) {
@@ -169,12 +169,13 @@ function MiniCalendar({
           }
           if (working && !d.isPast) {
             cellCls += d.worksDay && d.worksNight
-              ? "bg-violet-100"
+              ? "bg-violet-100 border-violet-200"
               : d.worksDay
-              ? "bg-amber-50 border border-amber-200"
-              : "bg-indigo-50 border border-indigo-200";
-          } else if (d.isPast) {
-            cellCls += "opacity-35";
+              ? "bg-amber-50 border-amber-200"
+              : "bg-indigo-50 border-indigo-200";
+          } else {
+            cellCls += "border-border";
+            if (d.isPast) cellCls += " opacity-35";
           }
 
           const numCls = `text-[11px] font-semibold leading-none ${
