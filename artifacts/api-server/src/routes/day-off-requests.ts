@@ -157,7 +157,15 @@ router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> =>
         .where(eq(shiftsTable.id, user.shiftId))
         .limit(1);
 
-      if (shift?.sergeantId) {
+      // Notify the requester that their request was received
+      await db.insert(notificationLogsTable).values({
+        recipientId: userId,
+        type: "day_off_submitted",
+        message: `Your day-off request for ${requestedDate} has been submitted and is pending approval.`,
+        isRead: false,
+      });
+
+      if (shift?.sergeantId && shift.sergeantId !== userId) {
         await db.insert(notificationLogsTable).values({
           recipientId: shift.sergeantId,
           type: "day_off_submitted",
@@ -376,13 +384,16 @@ router.delete("/day-off-requests/:id", requireAuth, async (req, res): Promise<vo
     const requesterId = req.session.userId!;
     const requesterRole = req.session.role ?? "";
 
-    // Fetch the request along with the requester's shiftId so we can scope correctly
+    // Fetch the request with full details needed for auth + notifications
     const [existing] = await db
       .select({
         id: dayOffRequestsTable.id,
         userId: dayOffRequestsTable.userId,
         status: dayOffRequestsTable.status,
+        requestedDate: dayOffRequestsTable.requestedDate,
         requesterShiftId: usersTable.shiftId,
+        requesterFirstName: usersTable.firstName,
+        requesterLastName: usersTable.lastName,
       })
       .from(dayOffRequestsTable)
       .innerJoin(usersTable, eq(dayOffRequestsTable.userId, usersTable.id))
@@ -423,6 +434,33 @@ router.delete("/day-off-requests/:id", requireAuth, async (req, res): Promise<vo
     // admin has no additional restrictions
 
     await db.delete(dayOffRequestsTable).where(eq(dayOffRequestsTable.id, id));
+
+    // Notify the requester (unless they deleted it themselves — still notify so they have a record)
+    await db.insert(notificationLogsTable).values({
+      recipientId: existing.userId,
+      type: "day_off_cancelled",
+      message: `Your day-off request for ${existing.requestedDate} has been removed.`,
+      isRead: false,
+    });
+
+    // Notify the sergeant if the request belonged to a shift and the sergeant is not the one who deleted it
+    if (existing.requesterShiftId) {
+      const [shift] = await db
+        .select({ sergeantId: shiftsTable.sergeantId })
+        .from(shiftsTable)
+        .where(eq(shiftsTable.id, existing.requesterShiftId))
+        .limit(1);
+
+      if (shift?.sergeantId && shift.sergeantId !== requesterId && shift.sergeantId !== existing.userId) {
+        await db.insert(notificationLogsTable).values({
+          recipientId: shift.sergeantId,
+          type: "day_off_cancelled",
+          message: `${existing.requesterFirstName} ${existing.requesterLastName}'s day-off request for ${existing.requestedDate} has been removed.`,
+          isRead: false,
+        });
+      }
+    }
+
     res.json({ message: "Request deleted" });
   } catch (err) {
     req.log.error(err);

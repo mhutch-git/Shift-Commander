@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useListDayOffRequests, getListDayOffRequestsQueryKey,
   useCreateDayOffRequest, useApproveDayOffRequest, useDenyDayOffRequest,
+  useDeleteDayOffRequest,
   useListUsers,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
 
 const REQUEST_TYPE_LABELS: Record<string, string> = {
   pto: "PTO",
@@ -68,6 +69,7 @@ export default function DayOffRequestsPage() {
   const [reviewingId, setReviewingId] = useState<number | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "deny">("approve");
   const [reviewNotes, setReviewNotes] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const isSergeantOrAdmin = user?.role === "sergeant" || user?.role === "admin";
 
@@ -101,6 +103,7 @@ export default function DayOffRequestsPage() {
   const createRequest = useCreateDayOffRequest();
   const approveRequest = useApproveDayOffRequest();
   const denyRequest = useDenyDayOffRequest();
+  const deleteRequest = useDeleteDayOffRequest();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,6 +132,20 @@ export default function DayOffRequestsPage() {
       });
     } catch {
       toast({ title: "Failed to submit request", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await deleteRequest.mutateAsync({ id: deleteConfirmId });
+      queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ userId: user?.id }) });
+      queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ status: "pending", shiftId: user?.shiftId ?? undefined }) });
+      toast({ title: "Request removed" });
+    } catch {
+      toast({ title: "Failed to remove request", variant: "destructive" });
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -268,12 +285,13 @@ export default function DayOffRequestsPage() {
                           <th className="pb-2 pr-4">Type</th>
                           <th className="pb-2 pr-4">Reason</th>
                           <th className="pb-2 pr-4">Status</th>
-                          <th className="pb-2">Submitted</th>
+                          <th className="pb-2 pr-4">Submitted</th>
+                          <th className="pb-2"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {myRequests.data?.length === 0 ? (
-                          <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">No requests submitted</td></tr>
+                          <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No requests submitted</td></tr>
                         ) : (
                           myRequests.data?.map((req) => (
                             <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`my-request-row-${req.id}`}>
@@ -281,8 +299,21 @@ export default function DayOffRequestsPage() {
                               <td className="py-2.5 pr-4"><RequestTypeBadge type={req.requestType} /></td>
                               <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
                               <td className="py-2.5 pr-4"><StatusBadge status={req.status} /></td>
-                              <td className="py-2.5 text-muted-foreground text-xs">
+                              <td className="py-2.5 pr-4 text-muted-foreground text-xs">
                                 {new Date(req.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="py-2.5">
+                                {req.status === "pending" && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    onClick={() => setDeleteConfirmId(req.id)}
+                                    data-testid={`btn-delete-request-${req.id}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
                               </td>
                             </tr>
                           ))
@@ -310,12 +341,13 @@ export default function DayOffRequestsPage() {
                             <th className="pb-2 pr-4">Date</th>
                             <th className="pb-2 pr-4">Type</th>
                             <th className="pb-2 pr-4">Reason</th>
-                            <th className="pb-2">Actions</th>
+                            <th className="pb-2 pr-4">Actions</th>
+                            <th className="pb-2"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {pendingRequests.data?.length === 0 ? (
-                            <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">No pending requests</td></tr>
+                            <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No pending requests</td></tr>
                           ) : (
                             pendingRequests.data?.map((req) => (
                               <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`pending-request-row-${req.id}`}>
@@ -325,7 +357,7 @@ export default function DayOffRequestsPage() {
                                 <td className="py-2.5 pr-4">{req.requestedDate}</td>
                                 <td className="py-2.5 pr-4"><RequestTypeBadge type={req.requestType} /></td>
                                 <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
-                                <td className="py-2.5">
+                                <td className="py-2.5 pr-4">
                                   <div className="flex gap-2">
                                     <Button
                                       size="sm"
@@ -347,6 +379,17 @@ export default function DayOffRequestsPage() {
                                     </Button>
                                   </div>
                                 </td>
+                                <td className="py-2.5">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    onClick={() => setDeleteConfirmId(req.id)}
+                                    data-testid={`btn-delete-pending-${req.id}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </td>
                               </tr>
                             ))
                           )}
@@ -360,6 +403,29 @@ export default function DayOffRequestsPage() {
           )}
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Day-Off Request</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Are you sure you want to remove this day-off request? The requester and their sergeant will be notified.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteRequest.isPending}
+              data-testid="btn-confirm-delete"
+            >
+              {deleteRequest.isPending ? "Removing…" : "Remove Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Review Dialog */}
       <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
