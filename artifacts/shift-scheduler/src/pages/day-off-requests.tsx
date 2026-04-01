@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Trash2, Clock3 } from "lucide-react";
 
 const REQUEST_TYPE_LABELS: Record<string, string> = {
   pto: "PTO",
@@ -61,9 +61,16 @@ export default function DayOffRequestsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const isNightShift = user?.shiftName?.toLowerCase().includes("night") ?? false;
+  const defaultPartialStart = isNightShift ? "20:00" : "08:00";
+  const defaultPartialEnd = isNightShift ? "00:00" : "12:00";
+
   const [date, setDate] = useState("");
   const [requestType, setRequestType] = useState("pto");
   const [reason, setReason] = useState("");
+  const [isPartialDay, setIsPartialDay] = useState(false);
+  const [partialStartTime, setPartialStartTime] = useState(defaultPartialStart);
+  const [partialEndTime, setPartialEndTime] = useState(defaultPartialEnd);
   const [onBehalfOfUserId, setOnBehalfOfUserId] = useState<number | "self">("self");
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewingId, setReviewingId] = useState<number | null>(null);
@@ -115,6 +122,8 @@ export default function DayOffRequestsPage() {
           requestedDate: date,
           requestType,
           reason,
+          isPartialDay,
+          ...(isPartialDay ? { partialStartTime, partialEndTime } : {}),
           ...(targetId ? { onBehalfOfUserId: targetId } : {}),
         },
       });
@@ -124,6 +133,9 @@ export default function DayOffRequestsPage() {
       setDate("");
       setRequestType("pto");
       setReason("");
+      setIsPartialDay(false);
+      setPartialStartTime(defaultPartialStart);
+      setPartialEndTime(defaultPartialEnd);
       setOnBehalfOfUserId("self");
       const targetName = selectableUsers.find((u) => u.id === targetId);
       toast({
@@ -236,6 +248,68 @@ export default function DayOffRequestsPage() {
                   </Select>
                 </div>
               </div>
+              {/* Full Day / Partial Day toggle */}
+              <div className="space-y-1.5">
+                <Label>Duration</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPartialDay(false)}
+                    className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${
+                      !isPartialDay
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-border hover:bg-muted"
+                    }`}
+                    data-testid="btn-full-day"
+                  >
+                    Full Day
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPartialDay(true)}
+                    className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${
+                      isPartialDay
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-border hover:bg-muted"
+                    }`}
+                    data-testid="btn-partial-day"
+                  >
+                    Partial Day
+                  </button>
+                </div>
+              </div>
+
+              {/* Partial day time range */}
+              {isPartialDay && (
+                <div className="grid grid-cols-2 gap-4 p-3 rounded-md bg-amber-50 border border-amber-200">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="partial-start">Leave Starts</Label>
+                    <Input
+                      id="partial-start"
+                      type="time"
+                      value={partialStartTime}
+                      onChange={(e) => setPartialStartTime(e.target.value)}
+                      required={isPartialDay}
+                      data-testid="input-partial-start"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="partial-end">Leave Ends</Label>
+                    <Input
+                      id="partial-end"
+                      type="time"
+                      value={partialEndTime}
+                      onChange={(e) => setPartialEndTime(e.target.value)}
+                      required={isPartialDay}
+                      data-testid="input-partial-end"
+                    />
+                  </div>
+                  <p className="col-span-2 text-xs text-amber-700">
+                    {isNightShift ? "Night shift: 5:00pm – 5:00am" : "Day shift: 5:00am – 5:00pm"}
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Label htmlFor="request-reason">Reason</Label>
                 <Textarea
@@ -296,7 +370,17 @@ export default function DayOffRequestsPage() {
                         ) : (
                           myRequests.data?.map((req) => (
                             <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`my-request-row-${req.id}`}>
-                              <td className="py-2.5 pr-4 font-medium text-foreground">{req.requestedDate}</td>
+                              <td className="py-2.5 pr-4 font-medium text-foreground">
+                                <div className="flex flex-col gap-0.5">
+                                  <span>{req.requestedDate}</span>
+                                  {req.isPartialDay && (
+                                    <span className="flex items-center gap-1 text-xs text-amber-700 font-normal">
+                                      <Clock3 className="w-3 h-3" />
+                                      {req.partialStartTime}–{req.partialEndTime}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
                               <td className="py-2.5 pr-4"><RequestTypeBadge type={req.requestType} /></td>
                               <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
                               <td className="py-2.5 pr-4"><StatusBadge status={req.status} /></td>
@@ -359,7 +443,17 @@ export default function DayOffRequestsPage() {
                                 <td className="py-2.5 pr-4 font-medium text-foreground">
                                   {req.requesterFirstName} {req.requesterLastName}
                                 </td>
-                                <td className="py-2.5 pr-4">{req.requestedDate}</td>
+                                <td className="py-2.5 pr-4">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span>{req.requestedDate}</span>
+                                    {req.isPartialDay && (
+                                      <span className="flex items-center gap-1 text-xs text-amber-700 font-normal">
+                                        <Clock3 className="w-3 h-3" />
+                                        {req.partialStartTime}–{req.partialEndTime}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
                                 <td className="py-2.5 pr-4"><RequestTypeBadge type={req.requestType} /></td>
                                 <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
                                 <td className="py-2.5 pr-4 text-xs text-muted-foreground">

@@ -23,6 +23,9 @@ async function getRequestWithDetails(id: number) {
       requestType: dayOffRequestsTable.requestType,
       reason: dayOffRequestsTable.reason,
       status: dayOffRequestsTable.status,
+      isPartialDay: dayOffRequestsTable.isPartialDay,
+      partialStartTime: dayOffRequestsTable.partialStartTime,
+      partialEndTime: dayOffRequestsTable.partialEndTime,
       createdById: dayOffRequestsTable.createdById,
       reviewedById: dayOffRequestsTable.reviewedById,
       reviewNotes: dayOffRequestsTable.reviewNotes,
@@ -57,6 +60,9 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
         requestType: dayOffRequestsTable.requestType,
         reason: dayOffRequestsTable.reason,
         status: dayOffRequestsTable.status,
+        isPartialDay: dayOffRequestsTable.isPartialDay,
+        partialStartTime: dayOffRequestsTable.partialStartTime,
+        partialEndTime: dayOffRequestsTable.partialEndTime,
         createdById: dayOffRequestsTable.createdById,
         reviewedById: dayOffRequestsTable.reviewedById,
         reviewNotes: dayOffRequestsTable.reviewNotes,
@@ -119,12 +125,16 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
 
 router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> => {
   try {
-    const { requestedDate, requestType, reason, onBehalfOfUserId } = req.body;
+    const { requestedDate, requestType, reason, onBehalfOfUserId, isPartialDay, partialStartTime, partialEndTime } = req.body;
     const requesterId = req.session.userId!;
     const requesterRole = req.session.role ?? "";
 
     if (!requestedDate || !reason) {
       res.status(400).json({ message: "requestedDate and reason required" });
+      return;
+    }
+    if (isPartialDay && (!partialStartTime || !partialEndTime)) {
+      res.status(400).json({ message: "partialStartTime and partialEndTime required for partial day requests" });
       return;
     }
     const validTypes = ["pto", "training", "sick_leave"];
@@ -151,7 +161,17 @@ router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> =>
 
     const [request] = await db
       .insert(dayOffRequestsTable)
-      .values({ userId, requestedDate, requestType: resolvedType, reason, status: "pending", createdById: requesterId })
+      .values({
+        userId,
+        requestedDate,
+        requestType: resolvedType,
+        reason,
+        status: "pending",
+        isPartialDay: !!isPartialDay,
+        partialStartTime: isPartialDay ? (partialStartTime ?? null) : null,
+        partialEndTime: isPartialDay ? (partialEndTime ?? null) : null,
+        createdById: requesterId,
+      })
       .returning();
 
     const [user] = await db

@@ -427,6 +427,15 @@ export const ListDayOffRequestsResponseItem = zod.object({
   createdById: zod.number().nullish(),
   createdByFirstName: zod.string().nullish(),
   createdByLastName: zod.string().nullish(),
+  isPartialDay: zod.boolean(),
+  partialStartTime: zod
+    .string()
+    .nullish()
+    .describe("HH:MM — start of partial leave window"),
+  partialEndTime: zod
+    .string()
+    .nullish()
+    .describe("HH:MM — end of partial leave window"),
 });
 export const ListDayOffRequestsResponse = zod.array(
   ListDayOffRequestsResponseItem,
@@ -443,6 +452,17 @@ export const CreateDayOffRequestBody = zod.object({
     .number()
     .optional()
     .describe("Admin\/sergeant only — submit on behalf of another user"),
+  isPartialDay: zod.boolean().optional(),
+  partialStartTime: zod
+    .string()
+    .optional()
+    .describe(
+      "HH:MM — start of partial leave window (required if isPartialDay)",
+    ),
+  partialEndTime: zod
+    .string()
+    .optional()
+    .describe("HH:MM — end of partial leave window (required if isPartialDay)"),
 });
 
 /**
@@ -471,6 +491,15 @@ export const GetDayOffRequestResponse = zod.object({
   createdById: zod.number().nullish(),
   createdByFirstName: zod.string().nullish(),
   createdByLastName: zod.string().nullish(),
+  isPartialDay: zod.boolean(),
+  partialStartTime: zod
+    .string()
+    .nullish()
+    .describe("HH:MM — start of partial leave window"),
+  partialEndTime: zod
+    .string()
+    .nullish()
+    .describe("HH:MM — end of partial leave window"),
 });
 
 /**
@@ -514,6 +543,15 @@ export const ApproveDayOffRequestResponse = zod.object({
   createdById: zod.number().nullish(),
   createdByFirstName: zod.string().nullish(),
   createdByLastName: zod.string().nullish(),
+  isPartialDay: zod.boolean(),
+  partialStartTime: zod
+    .string()
+    .nullish()
+    .describe("HH:MM — start of partial leave window"),
+  partialEndTime: zod
+    .string()
+    .nullish()
+    .describe("HH:MM — end of partial leave window"),
 });
 
 /**
@@ -546,6 +584,15 @@ export const DenyDayOffRequestResponse = zod.object({
   createdById: zod.number().nullish(),
   createdByFirstName: zod.string().nullish(),
   createdByLastName: zod.string().nullish(),
+  isPartialDay: zod.boolean(),
+  partialStartTime: zod
+    .string()
+    .nullish()
+    .describe("HH:MM — start of partial leave window"),
+  partialEndTime: zod
+    .string()
+    .nullish()
+    .describe("HH:MM — end of partial leave window"),
 });
 
 /**
@@ -583,6 +630,15 @@ export const GetDashboardSummaryResponse = zod.object({
       createdById: zod.number().nullish(),
       createdByFirstName: zod.string().nullish(),
       createdByLastName: zod.string().nullish(),
+      isPartialDay: zod.boolean(),
+      partialStartTime: zod
+        .string()
+        .nullish()
+        .describe("HH:MM — start of partial leave window"),
+      partialEndTime: zod
+        .string()
+        .nullish()
+        .describe("HH:MM — end of partial leave window"),
     }),
   ),
 });

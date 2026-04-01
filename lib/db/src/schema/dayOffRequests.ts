@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, timestamp, text, varchar, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, timestamp, text, varchar, date, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,6 +9,9 @@ export const dayOffRequestsTable = pgTable("day_off_requests", {
   requestType: varchar("request_type", { length: 30 }).notNull().default("pto"), // pto, training, sick_leave
   reason: text("reason").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, denied
+  isPartialDay: boolean("is_partial_day").notNull().default(false),
+  partialStartTime: varchar("partial_start_time", { length: 5 }), // HH:MM, null if full day
+  partialEndTime: varchar("partial_end_time", { length: 5 }),   // HH:MM, null if full day
   createdById: integer("created_by_id"),
   reviewedById: integer("reviewed_by_id"),
   reviewNotes: text("review_notes"),

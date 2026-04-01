@@ -303,6 +303,17 @@ export interface DayOffRequest {
   createdByFirstName?: string | null;
   /** @nullable */
   createdByLastName?: string | null;
+  isPartialDay: boolean;
+  /**
+   * HH:MM — start of partial leave window
+   * @nullable
+   */
+  partialStartTime?: string | null;
+  /**
+   * HH:MM — end of partial leave window
+   * @nullable
+   */
+  partialEndTime?: string | null;
 }
 
 export type CreateDayOffRequestBodyRequestType =
@@ -320,6 +331,11 @@ export interface CreateDayOffRequestBody {
   reason: string;
   /** Admin/sergeant only — submit on behalf of another user */
   onBehalfOfUserId?: number;
+  isPartialDay?: boolean;
+  /** HH:MM — start of partial leave window (required if isPartialDay) */
+  partialStartTime?: string;
+  /** HH:MM — end of partial leave window (required if isPartialDay) */
+  partialEndTime?: string;
 }
 
 export interface ReviewRequestBody {

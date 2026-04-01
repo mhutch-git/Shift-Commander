@@ -9,7 +9,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sun, Moon, Clock3 } from "lucide-react";
+
+// ── Partial-day helpers ──────────────────────────────────────────────────────
+
+function fmtTime(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const period = h >= 12 ? "pm" : "am";
+  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return m === 0 ? `${displayH}${period}` : `${displayH}:${m.toString().padStart(2, "0")}${period}`;
+}
+
+function getWorkingHours(shiftType: "day" | "night", offStart: string, offEnd: string): string {
+  const segments: string[] = [];
+  if (shiftType === "day") {
+    if (offStart > "05:00") segments.push(`${fmtTime("05:00")}–${fmtTime(offStart)}`);
+    if (offEnd < "17:00") segments.push(`${fmtTime(offEnd)}–${fmtTime("17:00")}`);
+  } else {
+    // Night shift: 17:00 → 05:00; compare times in shift order
+    const ord = (t: string) => { const h = parseInt(t); return h >= 17 ? h - 17 : h + 7; };
+    if (ord(offStart) > 0) segments.push(`${fmtTime("17:00")}–${fmtTime(offStart)}`);
+    if (ord(offEnd) < 12) segments.push(`${fmtTime(offEnd)}–${fmtTime("05:00")}`);
+  }
+  return segments.length > 0 ? segments.join(" & ") : "—";
+}
+
+// ── Date helpers ─────────────────────────────────────────────────────────────
 
 function addMonths(date: Date, n: number): Date {
   const d = new Date(date);
@@ -59,16 +84,26 @@ export default function SchedulePage() {
   // Fetch daily (manual) assignments for this month
   const dailyAssignmentsQuery = useListDailyAssignments({ start, end });
 
-  // Build a map: date -> Set of display names ("A. Brown") who are on approved day off
+  type DayOffInfo = {
+    isPartialDay: boolean;
+    partialStartTime?: string | null;
+    partialEndTime?: string | null;
+  };
+
+  // Build a map: date -> name -> DayOffInfo
   const dayOffMap = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
+    const map: Record<string, Record<string, DayOffInfo>> = {};
     for (const req of approvedRequests.data ?? []) {
       const date = req.requestedDate;
       if (date < start || date > end) continue;
-      if (!map[date]) map[date] = new Set();
+      if (!map[date]) map[date] = {};
       const initial = req.requesterFirstName ? req.requesterFirstName.charAt(0).toUpperCase() + "." : "";
       const displayName = initial ? `${initial} ${req.requesterLastName}` : req.requesterLastName;
-      if (displayName) map[date].add(displayName);
+      if (displayName) map[date][displayName] = {
+        isPartialDay: req.isPartialDay ?? false,
+        partialStartTime: req.partialStartTime,
+        partialEndTime: req.partialEndTime,
+      };
     }
     return map;
   }, [approvedRequests.data, start, end]);
@@ -139,6 +174,10 @@ export default function SchedulePage() {
                 <span className="text-red-600">Day Off</span>
               </div>
               <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm bg-amber-100 border border-amber-300" />
+                <span className="text-amber-700">Partial Day Off</span>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <span className="text-green-700 font-bold text-xs">+</span>
                 <span className="text-green-700">Additional</span>
               </div>
@@ -168,7 +207,7 @@ export default function SchedulePage() {
                   const info = scheduleMap[key];
                   const letter = info?.workingShiftLetter;
                   const isToday = key === today;
-                  const dayOffNames = dayOffMap[key] ?? new Set<string>();
+                  const dayOffForKey = dayOffMap[key] ?? {};
 
                   const dayShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "day" && s.isWorking);
                   const nightShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "night" && s.isWorking);
@@ -211,14 +250,18 @@ export default function SchedulePage() {
                           </div>
                           <div className="flex flex-col gap-0 leading-tight">
                             {dayNames.map((name) => {
-                              const isOff = dayOffNames.has(name);
+                              const info = dayOffForKey[name];
+                              const isFullOff = !!info && !info.isPartialDay;
+                              const isPartial = !!info?.isPartialDay;
                               const isSgt = name === daySgtName;
                               return (
                                 <span
                                   key={name}
                                   className={`text-[9px] truncate ${
-                                    isOff
+                                    isFullOff
                                       ? "text-red-600 line-through font-medium"
+                                      : isPartial
+                                      ? "text-amber-700 font-medium"
                                       : isSgt
                                       ? "text-foreground font-bold"
                                       : "text-foreground/80 font-medium"
@@ -243,14 +286,18 @@ export default function SchedulePage() {
                           </div>
                           <div className="flex flex-col gap-0 leading-tight">
                             {nightNames.map((name) => {
-                              const isOff = dayOffNames.has(name);
+                              const info = dayOffForKey[name];
+                              const isFullOff = !!info && !info.isPartialDay;
+                              const isPartial = !!info?.isPartialDay;
                               const isSgt = name === nightSgtName;
                               return (
                                 <span
                                   key={name}
                                   className={`text-[9px] truncate ${
-                                    isOff
+                                    isFullOff
                                       ? "text-red-600 line-through font-medium"
+                                      : isPartial
+                                      ? "text-amber-700 font-medium"
                                       : isSgt
                                       ? "text-foreground font-bold"
                                       : "text-foreground/80 font-medium"
@@ -300,13 +347,16 @@ export default function SchedulePage() {
                   ].map(({ icon: Icon, label, type, color }) => {
                     const shift = selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type && s.isWorking)
                       ?? selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type);
-                    const dayOffForDay = dayOffMap[selectedDay.date] ?? new Set<string>();
+                    const dayOffForDay = dayOffMap[selectedDay.date] ?? {};
                     const additionalForType = dailyMap[selectedDay.date]?.[type as "day" | "night"] ?? [];
 
                     // Show the card if the shift is working OR there are additional assignees
                     if (!shift && additionalForType.length === 0) return null;
 
-                    const offCount = (shift?.memberNames ?? []).filter((n) => dayOffForDay.has(n)).length;
+                    const offCount = (shift?.memberNames ?? []).filter((n) => {
+                      const i = dayOffForDay[n];
+                      return !!i && !i.isPartialDay;
+                    }).length;
                     const effectiveCount = ((shift?.memberCount ?? 0) - offCount) + additionalForType.length;
                     return (
                       <div
@@ -325,22 +375,36 @@ export default function SchedulePage() {
                         {shift?.isWorking && shift.memberNames && shift.memberNames.length > 0 && (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                             {shift.memberNames.map((name: string) => {
-                              const isOff = dayOffForDay.has(name);
+                              const offInfo = dayOffForDay[name];
+                              const isFullOff = !!offInfo && !offInfo.isPartialDay;
+                              const isPartial = !!offInfo?.isPartialDay;
                               const isSgt = name === shift.sergeantName;
+                              const workingHours = isPartial && offInfo?.partialStartTime && offInfo?.partialEndTime
+                                ? getWorkingHours(type as "day" | "night", offInfo.partialStartTime, offInfo.partialEndTime)
+                                : null;
                               return (
-                                <span
-                                  key={name}
-                                  className={`text-sm ${
-                                    isOff
-                                      ? "text-red-600 line-through"
-                                      : isSgt
-                                      ? "font-bold text-foreground"
-                                      : "text-foreground"
-                                  }`}
-                                  title={isOff ? "Approved day off" : isSgt ? "Sergeant" : undefined}
-                                >
-                                  {name}
-                                </span>
+                                <div key={name} className="flex flex-col gap-0">
+                                  <span
+                                    className={`text-sm ${
+                                      isFullOff
+                                        ? "text-red-600 line-through"
+                                        : isPartial
+                                        ? "text-amber-700 font-medium"
+                                        : isSgt
+                                        ? "font-bold text-foreground"
+                                        : "text-foreground"
+                                    }`}
+                                    title={isFullOff ? "Approved full day off" : isPartial ? "Partial day off" : isSgt ? "Sergeant" : undefined}
+                                  >
+                                    {name}
+                                  </span>
+                                  {isPartial && workingHours && (
+                                    <span className="flex items-center gap-0.5 text-[10px] text-amber-600">
+                                      <Clock3 className="w-2.5 h-2.5" />
+                                      {workingHours}
+                                    </span>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
