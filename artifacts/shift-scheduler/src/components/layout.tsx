@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
   useSidebar
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Calendar, Shield, CalendarOff, Bell, Users, LogOut, UserPlus } from "lucide-react";
+import { Home, Calendar, Shield, CalendarOff, Bell, Users, LogOut, UserPlus } from "lucide-react";
 import badgeLogo from "@assets/INDIANA_SHERIFF_BADGE_PUTNAM_COUNTY_VECTOR_FILE_1775047938490.png";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -51,9 +51,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={location === "/"}>
-                      <Link href="/" data-testid="nav-dashboard">
-                        <LayoutDashboard />
-                        <span>Dashboard</span>
+                      <Link href="/" data-testid="nav-home">
+                        <Home />
+                        <span>Home</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

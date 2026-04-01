@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "@/components/protected-route";
 import LoginPage from "@/pages/login";
-import DashboardPage from "@/pages/dashboard";
+import HomePage from "@/pages/home";
 import SchedulePage from "@/pages/schedule";
 import ShiftsPage from "@/pages/shifts";
 import ShiftDetailPage from "@/pages/shift-detail";
@@ -33,7 +33,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/">
         <ProtectedRoute>
-          <DashboardPage />
+          <HomePage />
         </ProtectedRoute>
       </Route>
       <Route path="/schedule">
