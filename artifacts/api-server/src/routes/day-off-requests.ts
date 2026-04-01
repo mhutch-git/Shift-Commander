@@ -338,7 +338,9 @@ router.patch("/day-off-requests/:id/deny", requireRole(["admin", "sergeant"]), a
   }
 });
 
-// Deputy can delete their own pending request; admin can delete any
+// Deputy: delete own pending request
+// Sergeant: delete pending request belonging to their shift only
+// Admin: delete any request
 router.delete("/day-off-requests/:id", requireAuth, async (req, res): Promise<void> => {
   try {
     const id = parseInt(req.params.id as string);
@@ -350,9 +352,16 @@ router.delete("/day-off-requests/:id", requireAuth, async (req, res): Promise<vo
     const requesterId = req.session.userId!;
     const requesterRole = req.session.role ?? "";
 
+    // Fetch the request along with the requester's shiftId so we can scope correctly
     const [existing] = await db
-      .select()
+      .select({
+        id: dayOffRequestsTable.id,
+        userId: dayOffRequestsTable.userId,
+        status: dayOffRequestsTable.status,
+        requesterShiftId: usersTable.shiftId,
+      })
       .from(dayOffRequestsTable)
+      .innerJoin(usersTable, eq(dayOffRequestsTable.userId, usersTable.id))
       .where(eq(dayOffRequestsTable.id, id))
       .limit(1);
 
@@ -361,8 +370,8 @@ router.delete("/day-off-requests/:id", requireAuth, async (req, res): Promise<vo
       return;
     }
 
-    // Deputies can only delete their own pending requests
     if (requesterRole === "deputy") {
+      // Deputies can only delete their own pending requests
       if (existing.userId !== requesterId) {
         res.status(403).json({ message: "Forbidden" });
         return;
@@ -371,14 +380,23 @@ router.delete("/day-off-requests/:id", requireAuth, async (req, res): Promise<vo
         res.status(400).json({ message: "Only pending requests can be deleted" });
         return;
       }
-    }
-    // Sergeants can delete pending requests from their shift
-    if (requesterRole === "sergeant") {
+    } else if (requesterRole === "sergeant") {
+      // Sergeants can only delete pending requests from their own managed shift
       if (existing.status !== "pending") {
         res.status(400).json({ message: "Only pending requests can be deleted" });
         return;
       }
+      const [sergeantShift] = await db
+        .select({ id: shiftsTable.id })
+        .from(shiftsTable)
+        .where(eq(shiftsTable.sergeantId, requesterId))
+        .limit(1);
+      if (!sergeantShift || existing.requesterShiftId !== sergeantShift.id) {
+        res.status(403).json({ message: "Forbidden" });
+        return;
+      }
     }
+    // admin has no additional restrictions
 
     await db.delete(dayOffRequestsTable).where(eq(dayOffRequestsTable.id, id));
     res.json({ message: "Request deleted" });
