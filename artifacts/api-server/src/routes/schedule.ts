@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, shiftsTable, shiftAssignmentsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, shiftsTable, shiftAssignmentsTable, usersTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import {
   getWorkingShiftLetter,
@@ -11,35 +11,63 @@ import {
 
 const router = Router();
 
-async function buildScheduleDay(date: Date) {
+type ShiftSummary = {
+  id: number;
+  name: string;
+  shiftType: string;
+  shiftLetter: string;
+  sergeantName: string | null;
+  memberCount: number;
+};
+
+/**
+ * Fetch all shifts with their sergeant name and total member count in two queries.
+ * This avoids N+1 patterns when building schedule days.
+ */
+async function fetchShiftSummaries(): Promise<ShiftSummary[]> {
+  const shifts = await db
+    .select({
+      id: shiftsTable.id,
+      name: shiftsTable.name,
+      shiftType: shiftsTable.shiftType,
+      shiftLetter: shiftsTable.shiftLetter,
+      sergeantName: sql<string | null>`concat(${usersTable.firstName}, ' ', ${usersTable.lastName})`,
+    })
+    .from(shiftsTable)
+    .leftJoin(usersTable, eq(shiftsTable.sergeantId, usersTable.id))
+    .orderBy(shiftsTable.id);
+
+  // Batch member counts in a single query
+  const countRows = await db
+    .select({
+      shiftId: shiftAssignmentsTable.shiftId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(shiftAssignmentsTable)
+    .groupBy(shiftAssignmentsTable.shiftId);
+
+  const countMap = new Map(countRows.map((r) => [r.shiftId, r.count]));
+
+  return shifts.map((s) => ({
+    ...s,
+    sergeantName: s.sergeantName?.trim() || null,
+    memberCount: countMap.get(s.id) ?? 0,
+  }));
+}
+
+function buildScheduleDay(date: Date, shiftSummaries: ShiftSummary[]) {
   const workingLetter = getWorkingShiftLetter(date);
   const dayOfWeek = date.getUTCDay();
 
-  const shifts = await db.select().from(shiftsTable).orderBy(shiftsTable.id);
-
-  const shiftsForDay = await Promise.all(
-    shifts.map(async (shift) => {
-      const isWorking = shift.shiftLetter === workingLetter;
-      const memberCount = isWorking
-        ? (
-            await db
-              .select()
-              .from(shiftAssignmentsTable)
-              .where(eq(shiftAssignmentsTable.shiftId, shift.id))
-          ).length
-        : 0;
-
-      return {
-        id: shift.id,
-        name: shift.name,
-        shiftType: shift.shiftType,
-        shiftLetter: shift.shiftLetter,
-        isWorking,
-        memberCount,
-        sergeantId: shift.sergeantId,
-      };
-    })
-  );
+  const shiftsForDay = shiftSummaries.map((shift) => ({
+    id: shift.id,
+    name: shift.name,
+    shiftType: shift.shiftType,
+    shiftLetter: shift.shiftLetter,
+    isWorking: shift.shiftLetter === workingLetter,
+    memberCount: shift.shiftLetter === workingLetter ? shift.memberCount : 0,
+    sergeantName: shift.sergeantName,
+  }));
 
   return {
     date: formatDate(date),
@@ -71,15 +99,17 @@ router.get("/schedule", requireAuth, async (req, res): Promise<void> => {
       return;
     }
 
-    // Clamp range to avoid unbounded per-day DB calls
     const clampedEnd = endDate > addDays(startDate, MAX_SCHEDULE_DAYS - 1)
       ? addDays(startDate, MAX_SCHEDULE_DAYS - 1)
       : endDate;
 
+    // Fetch shift data once, then reuse across all days
+    const shiftSummaries = await fetchShiftSummaries();
+
     const days = [];
     let current = startDate;
     while (current <= clampedEnd) {
-      days.push(await buildScheduleDay(current));
+      days.push(buildScheduleDay(current, shiftSummaries));
       current = addDays(current, 1);
     }
 
@@ -96,27 +126,22 @@ router.get("/schedule/today", requireAuth, async (req, res): Promise<void> => {
     today.setUTCHours(0, 0, 0, 0);
     const workingLetter = getWorkingShiftLetter(today);
 
-    const shifts = await db.select().from(shiftsTable).orderBy(shiftsTable.id);
+    const shiftSummaries = await fetchShiftSummaries();
 
-    const workingShifts = shifts.filter((s) => s.shiftLetter === workingLetter);
-    const offShifts = shifts.filter((s) => s.shiftLetter !== workingLetter);
+    const workingShifts = shiftSummaries
+      .filter((s) => s.shiftLetter === workingLetter)
+      .map((s) => ({ ...s, isWorking: true }));
 
-    const workingWithMembers = await Promise.all(
-      workingShifts.map(async (shift) => {
-        const members = await db
-          .select()
-          .from(shiftAssignmentsTable)
-          .where(eq(shiftAssignmentsTable.shiftId, shift.id));
-        return { ...shift, memberCount: members.length };
-      })
-    );
+    const offShifts = shiftSummaries
+      .filter((s) => s.shiftLetter !== workingLetter)
+      .map((s) => ({ ...s, memberCount: 0, isWorking: false }));
 
     res.json({
       date: formatDate(today),
       dayOfWeek: getDayName(today.getUTCDay()),
       workingShiftLetter: workingLetter,
-      workingShifts: workingWithMembers,
-      offShifts: offShifts.map((s) => ({ ...s, memberCount: 0 })),
+      workingShifts,
+      offShifts,
     });
   } catch (err) {
     req.log.error(err);
