@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import {
   useGetSchedule, getGetScheduleQueryKey, type ScheduleDay, type ScheduleShift,
   useListDayOffRequests,
+  useListDailyAssignments,
 } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,6 +56,9 @@ export default function SchedulePage() {
   // Fetch approved day-off requests for this month
   const approvedRequests = useListDayOffRequests({ status: "approved" });
 
+  // Fetch daily (manual) assignments for this month
+  const dailyAssignmentsQuery = useListDailyAssignments({ start, end });
+
   // Build a map: date -> Set of display names ("A. Brown") who are on approved day off
   const dayOffMap = useMemo(() => {
     const map: Record<string, Set<string>> = {};
@@ -68,6 +72,18 @@ export default function SchedulePage() {
     }
     return map;
   }, [approvedRequests.data, start, end]);
+
+  // Build a map: date -> { day: [{id, name}], night: [{id, name}] }
+  const dailyMap = useMemo(() => {
+    const map: Record<string, { day: { id: number; name: string }[]; night: { id: number; name: string }[] }> = {};
+    for (const a of dailyAssignmentsQuery.data ?? []) {
+      if (!map[a.assignedDate]) map[a.assignedDate] = { day: [], night: [] };
+      const initial = a.firstName ? a.firstName.charAt(0).toUpperCase() + "." : "";
+      const name = initial ? `${initial} ${a.lastName}` : a.lastName;
+      map[a.assignedDate]![a.shiftType as "day" | "night"].push({ id: a.id, name });
+    }
+    return map;
+  }, [dailyAssignmentsQuery.data]);
 
   const days = getDaysInMonth(year, month);
   const firstDayOfWeek = days[0].getUTCDay();
@@ -122,6 +138,10 @@ export default function SchedulePage() {
                 <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300" />
                 <span className="text-red-600">Day Off</span>
               </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-green-700 font-bold text-xs">+</span>
+                <span className="text-green-700">Additional</span>
+              </div>
             </div>
 
             {/* Day-of-week header */}
@@ -157,6 +177,8 @@ export default function SchedulePage() {
                   const nightNames = nightShift?.memberNames ?? [];
                   const daySgtName = dayShift?.sergeantName ?? null;
                   const nightSgtName = nightShift?.sergeantName ?? null;
+                  const dailyDay = dailyMap[key]?.day ?? [];
+                  const dailyNight = dailyMap[key]?.night ?? [];
 
                   return (
                     <button
@@ -206,6 +228,11 @@ export default function SchedulePage() {
                                 </span>
                               );
                             })}
+                            {dailyDay.map((a) => (
+                              <span key={`da-${a.id}`} className="text-[9px] truncate text-green-700 font-medium">
+                                +{a.name}
+                              </span>
+                            ))}
                           </div>
                         </div>
 
@@ -233,6 +260,11 @@ export default function SchedulePage() {
                                 </span>
                               );
                             })}
+                            {dailyNight.map((a) => (
+                              <span key={`na-${a.id}`} className="text-[9px] truncate text-green-700 font-medium">
+                                +{a.name}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -268,25 +300,29 @@ export default function SchedulePage() {
                   ].map(({ icon: Icon, label, type, color }) => {
                     const shift = selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type && s.isWorking)
                       ?? selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type);
-                    if (!shift) return null;
                     const dayOffForDay = dayOffMap[selectedDay.date] ?? new Set<string>();
-                    const offCount = (shift.memberNames ?? []).filter((n) => dayOffForDay.has(n)).length;
-                    const effectiveCount = (shift.memberCount ?? 0) - offCount;
+                    const additionalForType = dailyMap[selectedDay.date]?.[type as "day" | "night"] ?? [];
+
+                    // Show the card if the shift is working OR there are additional assignees
+                    if (!shift && additionalForType.length === 0) return null;
+
+                    const offCount = (shift?.memberNames ?? []).filter((n) => dayOffForDay.has(n)).length;
+                    const effectiveCount = ((shift?.memberCount ?? 0) - offCount) + additionalForType.length;
                     return (
                       <div
                         key={type}
-                        className={`p-4 rounded-md border ${shift.isWorking ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-border opacity-60"}`}
+                        className={`p-4 rounded-md border ${shift?.isWorking || additionalForType.length > 0 ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-border opacity-60"}`}
                       >
                         <div className="flex items-center gap-2 mb-2">
                           <Icon className={`w-4 h-4 ${color}`} />
-                          <p className="font-semibold text-sm text-foreground">{shift.name}</p>
-                          {shift.isWorking ? (
+                          <p className="font-semibold text-sm text-foreground">{label}</p>
+                          {shift?.isWorking || additionalForType.length > 0 ? (
                             <span className="ml-auto text-xs font-medium text-primary">{effectiveCount} on duty</span>
                           ) : (
                             <span className="ml-auto text-xs text-muted-foreground">Off duty</span>
                           )}
                         </div>
-                        {shift.isWorking && shift.memberNames && shift.memberNames.length > 0 && (
+                        {shift?.isWorking && shift.memberNames && shift.memberNames.length > 0 && (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                             {shift.memberNames.map((name: string) => {
                               const isOff = dayOffForDay.has(name);
@@ -309,8 +345,20 @@ export default function SchedulePage() {
                             })}
                           </div>
                         )}
-                        {offCount > 0 && shift.isWorking && (
+                        {offCount > 0 && shift?.isWorking && (
                           <p className="text-xs text-red-500 mt-2">{offCount} on approved day off</p>
+                        )}
+                        {additionalForType.length > 0 && (
+                          <div className={`${shift?.isWorking && shift.memberNames?.length ? "mt-3 pt-3 border-t border-border/50" : "mt-1"}`}>
+                            <p className="text-xs font-semibold text-green-700 mb-1.5">Additional Personnel</p>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                              {additionalForType.map((a) => (
+                                <span key={a.id} className="text-sm text-green-700">
+                                  {a.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
