@@ -252,6 +252,8 @@ export default function SchedulePage() {
                       ?? selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type);
                     if (!shift) return null;
                     const dayOffForDay = dayOffMap[selectedDay.date] ?? new Set<string>();
+                    const offCount = (shift.memberNames ?? []).filter((n) => dayOffForDay.has(n)).length;
+                    const effectiveCount = (shift.memberCount ?? 0) - offCount;
                     return (
                       <div
                         key={type}
@@ -261,7 +263,7 @@ export default function SchedulePage() {
                           <Icon className={`w-4 h-4 ${color}`} />
                           <p className="font-semibold text-sm text-foreground">{shift.name}</p>
                           {shift.isWorking ? (
-                            <span className="ml-auto text-xs font-medium text-primary">{shift.memberCount} on duty</span>
+                            <span className="ml-auto text-xs font-medium text-primary">{effectiveCount} on duty</span>
                           ) : (
                             <span className="ml-auto text-xs text-muted-foreground">Off duty</span>
                           )}
@@ -282,12 +284,8 @@ export default function SchedulePage() {
                             })}
                           </div>
                         )}
-                        {dayOffForDay.size > 0 && shift.isWorking && (
-                          <p className="text-xs text-red-500 mt-2">
-                            {[...dayOffForDay].filter((n) => shift.memberNames?.includes(n)).length > 0
-                              ? `${[...dayOffForDay].filter((n) => shift.memberNames?.includes(n)).length} on approved day off`
-                              : null}
-                          </p>
+                        {offCount > 0 && shift.isWorking && (
+                          <p className="text-xs text-red-500 mt-2">{offCount} on approved day off</p>
                         )}
                         {shift.sergeantName && (
                           <p className="text-xs text-muted-foreground mt-2">Sgt. {shift.sergeantName}</p>
