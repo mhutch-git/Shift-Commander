@@ -212,6 +212,19 @@ router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<voi
     const id = parseInt(req.params.id as string);
     const { email, firstName, lastName, role, shiftId, isActive, password } = req.body;
 
+    // Fetch the target user's current state before updating so we can correctly
+    // determine whether sessions need to be invalidated
+    const [currentUser] = await db
+      .select({ role: usersTable.role, isActive: usersTable.isActive })
+      .from(usersTable)
+      .where(eq(usersTable.id, id))
+      .limit(1);
+
+    if (!currentUser) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
     const updates: Record<string, unknown> = {};
     if (email !== undefined) updates.email = email.toLowerCase().trim();
     if (firstName !== undefined) updates.firstName = firstName;
@@ -233,11 +246,11 @@ router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<voi
       return;
     }
 
-    // Invalidate active sessions if the account is deactivated or role changed
-    // so the user cannot continue using stale session privileges
+    // Invalidate active sessions when the target user's role or active status changed.
+    // Compare against the target user's PRIOR state, not the requester's session.
     const sessionMustBeInvalidated =
-      (isActive !== undefined && !isActive) ||
-      (role !== undefined && role !== req.session.role);
+      (isActive !== undefined && isActive !== currentUser.isActive) ||
+      (role !== undefined && role !== currentUser.role);
     if (sessionMustBeInvalidated) {
       await invalidateUserSessions(id);
     }
