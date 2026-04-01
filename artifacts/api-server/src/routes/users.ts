@@ -1,9 +1,24 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, shiftsTable, shiftAssignmentsTable, notificationLogsTable } from "@workspace/db";
+import { db, pool, usersTable, shiftsTable, shiftAssignmentsTable, notificationLogsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { sendEmail } from "../lib/email";
+
+/**
+ * Deletes all active sessions for a user from the connect-pg-simple session store.
+ * Used when a user is deactivated or their role changes so stale sessions cannot be reused.
+ */
+async function invalidateUserSessions(userId: number): Promise<void> {
+  try {
+    await pool.query(
+      `DELETE FROM session WHERE (sess->>'userId')::int = $1`,
+      [userId]
+    );
+  } catch {
+    // Non-fatal — best-effort invalidation
+  }
+}
 
 async function syncShiftAssignment(userId: number, shiftId: number | null, effectiveDate?: string): Promise<void> {
   await db.delete(shiftAssignmentsTable).where(eq(shiftAssignmentsTable.userId, userId));
@@ -215,6 +230,15 @@ router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<voi
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
+    }
+
+    // Invalidate active sessions if the account is deactivated or role changed
+    // so the user cannot continue using stale session privileges
+    const sessionMustBeInvalidated =
+      (isActive !== undefined && !isActive) ||
+      (role !== undefined && role !== req.session.role);
+    if (sessionMustBeInvalidated) {
+      await invalidateUserSessions(id);
     }
 
     // Keep shift_assignments in sync and notify the affected user when shiftId changes

@@ -71,7 +71,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
       .where(eq(usersTable.id, req.session.userId))
       .limit(1);
 
-    if (!user) {
+    if (!user || !user.isActive) {
       req.session.destroy(() => {});
       res.status(401).json({ message: "Unauthorized" });
       return;
