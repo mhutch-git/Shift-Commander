@@ -90,9 +90,13 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
+      // Both the frontend and API are served from the same Replit domain in
+      // all environments (dev preview and production), so same-site "lax" is
+      // sufficient and provides CSRF protection for free.
+      // sameSite: "none" would require CSRF mitigations; "lax" avoids that.
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
   })
