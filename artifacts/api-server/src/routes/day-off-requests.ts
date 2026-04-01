@@ -18,6 +18,7 @@ async function getRequestWithDetails(id: number) {
       id: dayOffRequestsTable.id,
       userId: dayOffRequestsTable.userId,
       requestedDate: dayOffRequestsTable.requestedDate,
+      requestType: dayOffRequestsTable.requestType,
       reason: dayOffRequestsTable.reason,
       status: dayOffRequestsTable.status,
       reviewedById: dayOffRequestsTable.reviewedById,
@@ -47,6 +48,7 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
         id: dayOffRequestsTable.id,
         userId: dayOffRequestsTable.userId,
         requestedDate: dayOffRequestsTable.requestedDate,
+        requestType: dayOffRequestsTable.requestType,
         reason: dayOffRequestsTable.reason,
         status: dayOffRequestsTable.status,
         reviewedById: dayOffRequestsTable.reviewedById,
@@ -107,17 +109,19 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
 
 router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> => {
   try {
-    const { requestedDate, reason } = req.body;
+    const { requestedDate, requestType, reason } = req.body;
     const userId = req.session.userId!;
 
     if (!requestedDate || !reason) {
       res.status(400).json({ message: "requestedDate and reason required" });
       return;
     }
+    const validTypes = ["pto", "training", "sick_leave"];
+    const resolvedType = validTypes.includes(requestType) ? requestType : "pto";
 
     const [request] = await db
       .insert(dayOffRequestsTable)
-      .values({ userId, requestedDate, reason, status: "pending" })
+      .values({ userId, requestedDate, requestType: resolvedType, reason, status: "pending" })
       .returning();
 
     const [user] = await db

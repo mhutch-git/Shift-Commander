@@ -1070,6 +1070,9 @@ components:
           type: integer
         requestedDate:
           type: string
+        requestType:
+          type: string
+          enum: [pto, training, sick_leave]
         reason:
           type: string
         status:
@@ -1097,6 +1100,7 @@ components:
         - id
         - userId
         - requestedDate
+        - requestType
         - reason
         - status
         - createdAt
@@ -1108,10 +1112,14 @@ components:
       properties:
         requestedDate:
           type: string
+        requestType:
+          type: string
+          enum: [pto, training, sick_leave]
         reason:
           type: string
       required:
         - requestedDate
+        - requestType
         - reason
 
     ReviewRequestBody:

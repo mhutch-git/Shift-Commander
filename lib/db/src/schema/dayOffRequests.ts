@@ -6,6 +6,7 @@ export const dayOffRequestsTable = pgTable("day_off_requests", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   requestedDate: date("requested_date").notNull(),
+  requestType: varchar("request_type", { length: 30 }).notNull().default("pto"), // pto, training, sick_leave
   reason: text("reason").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, denied
   reviewedById: integer("reviewed_by_id"),

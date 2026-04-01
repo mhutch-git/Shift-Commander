@@ -14,8 +14,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
+
+const REQUEST_TYPE_LABELS: Record<string, string> = {
+  pto: "PTO",
+  training: "Training",
+  sick_leave: "Sick Leave",
+};
+
+function RequestTypeBadge({ type }: { type: string }) {
+  const colors: Record<string, string> = {
+    pto: "bg-blue-100 text-blue-800 border-blue-200",
+    training: "bg-purple-100 text-purple-800 border-purple-200",
+    sick_leave: "bg-orange-100 text-orange-800 border-orange-200",
+  };
+  const label = REQUEST_TYPE_LABELS[type] ?? type;
+  const color = colors[type] ?? "bg-muted text-muted-foreground border-border";
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${color}`}>
+      {label}
+    </span>
+  );
+}
 
 function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, { label: string; className: string; Icon: React.ElementType }> = {
@@ -38,6 +60,7 @@ export default function DayOffRequestsPage() {
   const { toast } = useToast();
 
   const [date, setDate] = useState("");
+  const [requestType, setRequestType] = useState("pto");
   const [reason, setReason] = useState("");
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewingId, setReviewingId] = useState<number | null>(null);
@@ -69,9 +92,10 @@ export default function DayOffRequestsPage() {
     e.preventDefault();
     if (!date || !reason) return;
     try {
-      await createRequest.mutateAsync({ data: { requestedDate: date, reason } });
+      await createRequest.mutateAsync({ data: { requestedDate: date, requestType, reason } });
       queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ userId: user?.id }) });
       setDate("");
+      setRequestType("pto");
       setReason("");
       toast({ title: "Day-off request submitted" });
     } catch {
@@ -129,6 +153,19 @@ export default function DayOffRequestsPage() {
                     data-testid="input-request-date"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Request Type</Label>
+                  <Select value={requestType} onValueChange={setRequestType}>
+                    <SelectTrigger data-testid="select-request-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pto">PTO</SelectItem>
+                      <SelectItem value="training">Training</SelectItem>
+                      <SelectItem value="sick_leave">Sick Leave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="request-reason">Reason</Label>
@@ -176,6 +213,7 @@ export default function DayOffRequestsPage() {
                       <thead>
                         <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
                           <th className="pb-2 pr-4">Date</th>
+                          <th className="pb-2 pr-4">Type</th>
                           <th className="pb-2 pr-4">Reason</th>
                           <th className="pb-2 pr-4">Status</th>
                           <th className="pb-2">Submitted</th>
@@ -183,11 +221,12 @@ export default function DayOffRequestsPage() {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {myRequests.data?.length === 0 ? (
-                          <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">No requests submitted</td></tr>
+                          <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">No requests submitted</td></tr>
                         ) : (
                           myRequests.data?.map((req) => (
                             <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`my-request-row-${req.id}`}>
                               <td className="py-2.5 pr-4 font-medium text-foreground">{req.requestedDate}</td>
+                              <td className="py-2.5 pr-4"><RequestTypeBadge type={req.requestType} /></td>
                               <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
                               <td className="py-2.5 pr-4"><StatusBadge status={req.status} /></td>
                               <td className="py-2.5 text-muted-foreground text-xs">
@@ -217,13 +256,14 @@ export default function DayOffRequestsPage() {
                           <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
                             <th className="pb-2 pr-4">Deputy</th>
                             <th className="pb-2 pr-4">Date</th>
+                            <th className="pb-2 pr-4">Type</th>
                             <th className="pb-2 pr-4">Reason</th>
                             <th className="pb-2">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {pendingRequests.data?.length === 0 ? (
-                            <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">No pending requests</td></tr>
+                            <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">No pending requests</td></tr>
                           ) : (
                             pendingRequests.data?.map((req) => (
                               <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`pending-request-row-${req.id}`}>
@@ -231,6 +271,7 @@ export default function DayOffRequestsPage() {
                                   {req.requesterFirstName} {req.requesterLastName}
                                 </td>
                                 <td className="py-2.5 pr-4">{req.requestedDate}</td>
+                                <td className="py-2.5 pr-4"><RequestTypeBadge type={req.requestType} /></td>
                                 <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
                                 <td className="py-2.5">
                                   <div className="flex gap-2">

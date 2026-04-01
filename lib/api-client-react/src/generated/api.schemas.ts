@@ -249,6 +249,15 @@ export interface TodaySchedule {
   offShifts: ScheduleShiftWithCount[];
 }
 
+export type DayOffRequestRequestType =
+  (typeof DayOffRequestRequestType)[keyof typeof DayOffRequestRequestType];
+
+export const DayOffRequestRequestType = {
+  pto: "pto",
+  training: "training",
+  sick_leave: "sick_leave",
+} as const;
+
 export type DayOffRequestStatus =
   (typeof DayOffRequestStatus)[keyof typeof DayOffRequestStatus];
 
@@ -262,6 +271,7 @@ export interface DayOffRequest {
   id: number;
   userId: number;
   requestedDate: string;
+  requestType: DayOffRequestRequestType;
   reason: string;
   status: DayOffRequestStatus;
   /** @nullable */
@@ -281,8 +291,18 @@ export interface DayOffRequest {
   reviewerLastName?: string | null;
 }
 
+export type CreateDayOffRequestBodyRequestType =
+  (typeof CreateDayOffRequestBodyRequestType)[keyof typeof CreateDayOffRequestBodyRequestType];
+
+export const CreateDayOffRequestBodyRequestType = {
+  pto: "pto",
+  training: "training",
+  sick_leave: "sick_leave",
+} as const;
+
 export interface CreateDayOffRequestBody {
   requestedDate: string;
+  requestType: CreateDayOffRequestBodyRequestType;
   reason: string;
 }
 

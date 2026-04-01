@@ -353,6 +353,7 @@ export const ListDayOffRequestsResponseItem = zod.object({
   id: zod.number(),
   userId: zod.number(),
   requestedDate: zod.string(),
+  requestType: zod.enum(["pto", "training", "sick_leave"]),
   reason: zod.string(),
   status: zod.enum(["pending", "approved", "denied"]),
   reviewedById: zod.number().nullish(),
@@ -374,6 +375,7 @@ export const ListDayOffRequestsResponse = zod.array(
  */
 export const CreateDayOffRequestBody = zod.object({
   requestedDate: zod.string(),
+  requestType: zod.enum(["pto", "training", "sick_leave"]),
   reason: zod.string(),
 });
 
@@ -388,6 +390,7 @@ export const GetDayOffRequestResponse = zod.object({
   id: zod.number(),
   userId: zod.number(),
   requestedDate: zod.string(),
+  requestType: zod.enum(["pto", "training", "sick_leave"]),
   reason: zod.string(),
   status: zod.enum(["pending", "approved", "denied"]),
   reviewedById: zod.number().nullish(),
@@ -427,6 +430,7 @@ export const ApproveDayOffRequestResponse = zod.object({
   id: zod.number(),
   userId: zod.number(),
   requestedDate: zod.string(),
+  requestType: zod.enum(["pto", "training", "sick_leave"]),
   reason: zod.string(),
   status: zod.enum(["pending", "approved", "denied"]),
   reviewedById: zod.number().nullish(),
@@ -455,6 +459,7 @@ export const DenyDayOffRequestResponse = zod.object({
   id: zod.number(),
   userId: zod.number(),
   requestedDate: zod.string(),
+  requestType: zod.enum(["pto", "training", "sick_leave"]),
   reason: zod.string(),
   status: zod.enum(["pending", "approved", "denied"]),
   reviewedById: zod.number().nullish(),
@@ -488,6 +493,7 @@ export const GetDashboardSummaryResponse = zod.object({
       id: zod.number(),
       userId: zod.number(),
       requestedDate: zod.string(),
+      requestType: zod.enum(["pto", "training", "sick_leave"]),
       reason: zod.string(),
       status: zod.enum(["pending", "approved", "denied"]),
       reviewedById: zod.number().nullish(),
