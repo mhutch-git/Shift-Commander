@@ -185,7 +185,6 @@ export default function DayOffRequestsPage() {
                       {selectableUsers.map((u) => (
                         <SelectItem key={u.id} value={String(u.id)}>
                           {u.firstName} {u.lastName}
-                          {user?.role === "admin" && u.shiftId ? ` — Shift ${u.shiftId}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
