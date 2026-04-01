@@ -16,21 +16,46 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Applications
+
+### Putnam County Sheriff's Department — Shift Scheduling System
+
+A full-stack web app for managing ~25 law enforcement personnel across 4 rotating shifts (Day A, Day B, Night A, Night B). Built to mirror the Fleet Maintenance app's design system.
+
+**Frontend**: React + Vite at `/` (port 21522)
+**Backend**: Express API at `/api` (port 8080)
+
+**Features**:
+- Session-based auth (express-session + connect-pg-simple)
+- 8 pages: Login, Dashboard, Schedule Calendar, Shifts overview, Shift detail, Day-Off Requests, Personnel Management (admin), Notifications
+- Shift rotation: Shift A on Mon/Tue/Fri/Sat/Sun, Shift B on Wed/Thu, alternating weeks. Anchor: April 1, 2026 (Wednesday) = Shift B
+- Day-off request submission + sergeant/admin approval with email notifications (via nodemailer)
+- Role-based access: admin, sergeant, deputy
+
+**Branding**: Putnam County Sheriff's Department — navy blue (#1e3a6f), gold accent
+
+**Test credentials** (after running seed):
+- Admin: admin@putnamcounty.gov / admin123
+- Sergeant Day A: sgt.jones@putnamcounty.gov / password123
+- Deputy Day A: dep.brown@putnamcounty.gov / password123
+
+**Seed the database**: `cd artifacts/api-server && npx tsx src/seed.ts`
+
 ## Structure
 
 ```text
 artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+├── artifacts/
+│   ├── api-server/         # Express API server
+│   └── shift-scheduler/    # React + Vite frontend
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
+├── scripts/                # Utility scripts
+├── pnpm-workspace.yaml     # pnpm workspace
+├── tsconfig.base.json      # Shared TS options
 ├── tsconfig.json           # Root TS project references
 └── package.json            # Root package with hoisted devDeps
 ```

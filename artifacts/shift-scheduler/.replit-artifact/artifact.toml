@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Sheriff Shift Scheduler"
+version = "1.0.0"
+id = "artifacts/shift-scheduler"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21522
+
+[services.development]
+run = "pnpm --filter @workspace/shift-scheduler run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/shift-scheduler", "run", "build" ]
+publicDir = "artifacts/shift-scheduler/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21522"
+BASE_PATH = "/"

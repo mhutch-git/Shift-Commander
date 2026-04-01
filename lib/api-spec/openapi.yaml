@@ -3,20 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Sheriff Department Shift Scheduling API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: shifts
+    description: Shift management
+  - name: shiftAssignments
+    description: Shift assignments
+  - name: schedule
+    description: Schedule calendar
+  - name: dayOffRequests
+    description: Day off requests
+  - name: dashboard
+    description: Dashboard summary
+  - name: notifications
+    description: Notifications
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +40,566 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # USERS
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Deactivate user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # SHIFTS
+  /shifts:
+    get:
+      operationId: listShifts
+      tags: [shifts]
+      summary: List all shifts with their rosters
+      responses:
+        "200":
+          description: Shifts list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShiftWithRoster"
+
+  /shifts/{id}:
+    get:
+      operationId: getShift
+      tags: [shifts]
+      summary: Get shift by ID with roster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shift with roster
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftWithRoster"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateShift
+      tags: [shifts]
+      summary: Update shift (e.g. change sergeant)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShiftBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shift"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # SHIFT ASSIGNMENTS
+  /shift-assignments:
+    get:
+      operationId: listShiftAssignments
+      tags: [shiftAssignments]
+      summary: List shift assignments
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: integer
+        - name: shiftId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShiftAssignment"
+    post:
+      operationId: createShiftAssignment
+      tags: [shiftAssignments]
+      summary: Assign a user to a shift
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShiftAssignmentBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftAssignment"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /shift-assignments/{id}:
+    delete:
+      operationId: deleteShiftAssignment
+      tags: [shiftAssignments]
+      summary: Remove a shift assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # SCHEDULE
+  /schedule:
+    get:
+      operationId: getSchedule
+      tags: [schedule]
+      summary: Get schedule for a date range
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schedule days
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleDay"
+
+  /schedule/today:
+    get:
+      operationId: getTodaySchedule
+      tags: [schedule]
+      summary: Get today's working shifts and personnel
+      responses:
+        "200":
+          description: Today's schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodaySchedule"
+
+  # DAY OFF REQUESTS
+  /day-off-requests:
+    get:
+      operationId: listDayOffRequests
+      tags: [dayOffRequests]
+      summary: List day off requests
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, denied]
+        - name: shiftId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Requests list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DayOffRequest"
+    post:
+      operationId: createDayOffRequest
+      tags: [dayOffRequests]
+      summary: Submit a day off request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDayOffRequestBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DayOffRequest"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /day-off-requests/{id}:
+    get:
+      operationId: getDayOffRequest
+      tags: [dayOffRequests]
+      summary: Get day off request by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DayOffRequest"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /day-off-requests/{id}/approve:
+    patch:
+      operationId: approveDayOffRequest
+      tags: [dayOffRequests]
+      summary: Approve a day off request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRequestBody"
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DayOffRequest"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /day-off-requests/{id}/deny:
+    patch:
+      operationId: denyDayOffRequest
+      tags: [dayOffRequests]
+      summary: Deny a day off request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRequestBody"
+      responses:
+        "200":
+          description: Denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DayOffRequest"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # DASHBOARD
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  # NOTIFICATIONS
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for current user
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: All marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +610,433 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        shiftId:
+          type: ["integer", "null"]
+        shiftName:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - role
+        - isActive
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        shiftId:
+          type: ["integer", "null"]
+        shiftName:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - role
+        - isActive
+        - createdAt
+
+    CreateUserBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [admin, sergeant, deputy]
+        shiftId:
+          type: ["integer", "null"]
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+        - role
+
+    UpdateUserBody:
+      type: object
+      properties:
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [admin, sergeant, deputy]
+        shiftId:
+          type: ["integer", "null"]
+        isActive:
+          type: boolean
+        password:
+          type: string
+
+    Shift:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        shiftType:
+          type: string
+          enum: [day, night]
+        shiftLetter:
+          type: string
+          enum: [a, b]
+        sergeantId:
+          type: ["integer", "null"]
+        sergeantName:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - shiftType
+        - shiftLetter
+
+    ShiftWithRoster:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        shiftType:
+          type: string
+          enum: [day, night]
+        shiftLetter:
+          type: string
+          enum: [a, b]
+        sergeantId:
+          type: ["integer", "null"]
+        sergeantName:
+          type: ["string", "null"]
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShiftMember"
+      required:
+        - id
+        - name
+        - shiftType
+        - shiftLetter
+        - members
+
+    ShiftMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        email:
+          type: string
+      required:
+        - id
+        - userId
+        - firstName
+        - lastName
+        - role
+        - email
+
+    UpdateShiftBody:
+      type: object
+      properties:
+        sergeantId:
+          type: ["integer", "null"]
+
+    ShiftAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        shiftId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        shiftName:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - shiftId
+        - firstName
+        - lastName
+        - role
+        - shiftName
+        - createdAt
+
+    CreateShiftAssignmentBody:
+      type: object
+      properties:
+        userId:
+          type: integer
+        shiftId:
+          type: integer
+      required:
+        - userId
+        - shiftId
+
+    ScheduleDay:
+      type: object
+      properties:
+        date:
+          type: string
+        dayOfWeek:
+          type: string
+        workingShiftLetter:
+          type: string
+          enum: [a, b]
+        shifts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleShift"
+      required:
+        - date
+        - dayOfWeek
+        - workingShiftLetter
+        - shifts
+
+    ScheduleShift:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        shiftType:
+          type: string
+        shiftLetter:
+          type: string
+        isWorking:
+          type: boolean
+        memberCount:
+          type: integer
+        sergeantName:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - shiftType
+        - shiftLetter
+        - isWorking
+        - memberCount
+
+    TodaySchedule:
+      type: object
+      properties:
+        date:
+          type: string
+        workingShiftLetter:
+          type: string
+        dayShift:
+          $ref: "#/components/schemas/ShiftWithRoster"
+        nightShift:
+          $ref: "#/components/schemas/ShiftWithRoster"
+      required:
+        - date
+        - workingShiftLetter
+        - dayShift
+        - nightShift
+
+    DayOffRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        requestedDate:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, denied]
+        reviewedById:
+          type: ["integer", "null"]
+        reviewNotes:
+          type: ["string", "null"]
+        reviewedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        requesterFirstName:
+          type: string
+        requesterLastName:
+          type: string
+        requesterShiftName:
+          type: ["string", "null"]
+        reviewerFirstName:
+          type: ["string", "null"]
+        reviewerLastName:
+          type: ["string", "null"]
+      required:
+        - id
+        - userId
+        - requestedDate
+        - reason
+        - status
+        - createdAt
+        - requesterFirstName
+        - requesterLastName
+
+    CreateDayOffRequestBody:
+      type: object
+      properties:
+        requestedDate:
+          type: string
+        reason:
+          type: string
+      required:
+        - requestedDate
+        - reason
+
+    ReviewRequestBody:
+      type: object
+      properties:
+        reviewNotes:
+          type: string
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalPersonnel:
+          type: integer
+        activePersonnel:
+          type: integer
+        pendingRequests:
+          type: integer
+        todayWorkingShift:
+          type: string
+        shiftCounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShiftCount"
+        recentRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayOffRequest"
+      required:
+        - totalPersonnel
+        - activePersonnel
+        - pendingRequests
+        - todayWorkingShift
+        - shiftCounts
+        - recentRequests
+
+    ShiftCount:
+      type: object
+      properties:
+        shiftId:
+          type: integer
+        shiftName:
+          type: string
+        count:
+          type: integer
+      required:
+        - shiftId
+        - shiftName
+        - count
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        recipientId:
+          type: integer
+        type:
+          type: string
+        message:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - recipientId
+        - type
+        - message
+        - isRead
+        - createdAt
