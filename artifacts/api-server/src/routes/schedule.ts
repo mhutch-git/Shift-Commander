@@ -16,6 +16,7 @@ type ShiftSummary = {
   name: string;
   shiftType: string;
   shiftLetter: string;
+  sergeantId: number | null;
   sergeantName: string | null;
   memberCount: number;
   memberNames: string[];
@@ -32,16 +33,20 @@ async function fetchShiftSummaries(): Promise<ShiftSummary[]> {
       name: shiftsTable.name,
       shiftType: shiftsTable.shiftType,
       shiftLetter: shiftsTable.shiftLetter,
-      sergeantName: sql<string | null>`concat(${usersTable.firstName}, ' ', ${usersTable.lastName})`,
+      sergeantId: shiftsTable.sergeantId,
+      sergeantFirstName: usersTable.firstName,
+      sergeantLastName: usersTable.lastName,
     })
     .from(shiftsTable)
     .leftJoin(usersTable, eq(shiftsTable.sergeantId, usersTable.id))
     .orderBy(shiftsTable.id);
 
-  // Batch member counts and display names in a single query
+  // Batch member rows — include userId and role so we can pin sergeant first
   const memberRows = await db
     .select({
       shiftId: shiftAssignmentsTable.shiftId,
+      userId: usersTable.id,
+      role: usersTable.role,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
     })
@@ -54,14 +59,28 @@ async function fetchShiftSummaries(): Promise<ShiftSummary[]> {
     if (!membersMap.has(row.shiftId)) membersMap.set(row.shiftId, []);
     const initial = row.firstName ? row.firstName.charAt(0).toUpperCase() + "." : "";
     const displayName = initial ? `${initial} ${row.lastName}` : row.lastName;
-    membersMap.get(row.shiftId)!.push(displayName);
+    // Sergeant goes to front; deputies stay in alphabetical order
+    if (row.role === "sergeant") {
+      membersMap.get(row.shiftId)!.unshift(displayName);
+    } else {
+      membersMap.get(row.shiftId)!.push(displayName);
+    }
   }
 
   return shifts.map((s) => {
     const names = membersMap.get(s.id) ?? [];
+    // Build sergeant display name in same "A. Brown" format as memberNames
+    const sgtInitial = s.sergeantFirstName ? s.sergeantFirstName.charAt(0).toUpperCase() + "." : "";
+    const sergeantName = s.sergeantLastName
+      ? (sgtInitial ? `${sgtInitial} ${s.sergeantLastName}` : s.sergeantLastName)
+      : null;
     return {
-      ...s,
-      sergeantName: s.sergeantName?.trim() || null,
+      id: s.id,
+      name: s.name,
+      shiftType: s.shiftType,
+      shiftLetter: s.shiftLetter,
+      sergeantId: s.sergeantId ?? null,
+      sergeantName,
       memberCount: names.length,
       memberNames: names,
     };

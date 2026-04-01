@@ -155,6 +155,8 @@ export default function SchedulePage() {
 
                   const dayNames = dayShift?.memberNames ?? [];
                   const nightNames = nightShift?.memberNames ?? [];
+                  const daySgtName = dayShift?.sergeantName ?? null;
+                  const nightSgtName = nightShift?.sergeantName ?? null;
 
                   return (
                     <button
@@ -188,10 +190,17 @@ export default function SchedulePage() {
                           <div className="flex flex-col gap-0 leading-tight">
                             {dayNames.map((name) => {
                               const isOff = dayOffNames.has(name);
+                              const isSgt = name === daySgtName;
                               return (
                                 <span
                                   key={name}
-                                  className={`text-[9px] font-medium truncate ${isOff ? "text-red-600 line-through" : "text-foreground/80"}`}
+                                  className={`text-[9px] truncate ${
+                                    isOff
+                                      ? "text-red-600 line-through font-medium"
+                                      : isSgt
+                                      ? "text-foreground font-bold"
+                                      : "text-foreground/80 font-medium"
+                                  }`}
                                 >
                                   {name}
                                 </span>
@@ -208,10 +217,17 @@ export default function SchedulePage() {
                           <div className="flex flex-col gap-0 leading-tight">
                             {nightNames.map((name) => {
                               const isOff = dayOffNames.has(name);
+                              const isSgt = name === nightSgtName;
                               return (
                                 <span
                                   key={name}
-                                  className={`text-[9px] font-medium truncate ${isOff ? "text-red-600 line-through" : "text-foreground/80"}`}
+                                  className={`text-[9px] truncate ${
+                                    isOff
+                                      ? "text-red-600 line-through font-medium"
+                                      : isSgt
+                                      ? "text-foreground font-bold"
+                                      : "text-foreground/80 font-medium"
+                                  }`}
                                 >
                                   {name}
                                 </span>
@@ -274,11 +290,18 @@ export default function SchedulePage() {
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                             {shift.memberNames.map((name: string) => {
                               const isOff = dayOffForDay.has(name);
+                              const isSgt = name === shift.sergeantName;
                               return (
                                 <span
                                   key={name}
-                                  className={`text-sm ${isOff ? "text-red-600 line-through" : "text-foreground"}`}
-                                  title={isOff ? "Approved day off" : undefined}
+                                  className={`text-sm ${
+                                    isOff
+                                      ? "text-red-600 line-through"
+                                      : isSgt
+                                      ? "font-bold text-foreground"
+                                      : "text-foreground"
+                                  }`}
+                                  title={isOff ? "Approved day off" : isSgt ? "Sergeant" : undefined}
                                 >
                                   {name}
                                 </span>
@@ -288,9 +311,6 @@ export default function SchedulePage() {
                         )}
                         {offCount > 0 && shift.isWorking && (
                           <p className="text-xs text-red-500 mt-2">{offCount} on approved day off</p>
-                        )}
-                        {shift.sergeantName && (
-                          <p className="text-xs text-muted-foreground mt-2">Sgt. {shift.sergeantName}</p>
                         )}
                       </div>
                     );
