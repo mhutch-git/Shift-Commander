@@ -1,0 +1,32 @@
+id,name,agency,badge_id,email,type
+1, Jerrod Baugh,PCSO,67-1,jerrod.baugh@co.putnam.in.us,
+2, Tom Sutherlin,PCSO,67-2,tom.sutherlin@co.putnam.in.us,
+3, Dwight Simmons,PCSO,67-3,dwight.simmons@co.putnam.in.us,
+4, Doug Nally,PCSO,67-4,doug.nally@co.putnam.in.us,
+5, Matt Biggs,PCSO,67-5,matt.biggs@co.putnam.in.us,
+6, Riley Houghton,PCSO,67-7,riley.houghton@co.putnam.in.us ,
+7, Anthony Brown,PCSO,67-8,anthony.brown@co.putnam.in.us,
+8, Joshua Boller,PCSO,67-9,josh.boller@co.putnam.in.us,
+9, Robert Soilleux,PCSO,67-10,rob.soilleux@co.putnam.in.us,
+10, Kyle Lee,PCSO,67-11,kyle.lee@co.putnam.in.us,
+11, Todd Hopkins,PCSO,67-12,todd.hopkins@co.putnam.in.us,
+12, Randy Patrick,PCSO,67-13,randy.patrick@co.putnam.in.us,
+13, Josh Deal,PCSO,67-14,josh.deal@co.putnam.in.us,
+14, Josh Clark,PCSO,67-16,josh.clark@co.putnam.in.us,
+15, Levi Martin,PCSO,67-17,levi.martin@co.putnam.in.us,
+16, Derek Tomaw,PCSO,67-18,derek.tomaw@co.putnam.in.us,
+17, Kaleb Silbert,PCSO,67-19,kaleb.silbert@co.putnam.in.us,
+18, Patrick Landis,PCSO,67-20,patrick.landis@co.putnam.in.us,
+19, Austin Query,PCSO,67-21,austin.query@co.putnam.in.us,
+20, Shaun Jenkins,PCSO,67-22,shaun.jenkins@co.putnam.in.us,
+21, Tyler Lohr,PCSO,67-23,tyler.lohr@co.putnam.in.us,
+22, Scott Ducker,PCSO,67-24,scott.ducker@co.putnam.in.us,
+23, Tanner Nicholson,PCSO,67-25,tanner.nicholson@co.putnam.in.us,
+24, Larry Freund,PCSO,67-26,larry.freund@co.putnam.in.us,
+25, Austin Fields,PCSO,67-41,austin.fields@co.putnam.in.us,reserve
+26, Michael Hutcheson,PCSO,67-42,michael.hutcheson@co.putnam.in.us,reserve
+27, Sam Deaner,PCSO,67-43,samuel.deaner@co.putnam.in.us,reserve
+28, Travis Nicholson,PCSO,67-44,travis.nicholson@co.putnam.in.us,reserve
+29, Nickolas Smith,PCSO,67-45,nick.smith@co.putnam.in.us,reserve
+30, Brian Ramey,PCSO,67-47,brian.ramey@co.putnam.in.us,reserve
+31, Michael Clampitt,PCSO,67-50,michael.clampitt@co.putnam.in.us,reserve
