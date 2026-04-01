@@ -78,7 +78,7 @@ export const CreateUserBody = zod.object({
   password: zod.string(),
   firstName: zod.string(),
   lastName: zod.string(),
-  role: zod.enum(["admin", "sergeant", "deputy"]),
+  role: zod.enum(["admin", "sergeant", "deputy", "reserve"]),
   shiftId: zod.number().nullish(),
 });
 
@@ -112,7 +112,7 @@ export const UpdateUserBody = zod.object({
   email: zod.string().optional(),
   firstName: zod.string().optional(),
   lastName: zod.string().optional(),
-  role: zod.enum(["admin", "sergeant", "deputy"]).optional(),
+  role: zod.enum(["admin", "sergeant", "deputy", "reserve"]).optional(),
   shiftId: zod.number().nullish(),
   isActive: zod.boolean().optional(),
   password: zod.string().optional(),
@@ -271,6 +271,60 @@ export const DeleteShiftAssignmentParams = zod.object({
 });
 
 export const DeleteShiftAssignmentResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary List daily assignments
+ */
+export const ListDailyAssignmentsQueryParams = zod.object({
+  date: zod.coerce.string().optional().describe("Filter by date (YYYY-MM-DD)"),
+  start: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter by start date (YYYY-MM-DD)"),
+  end: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter by end date (YYYY-MM-DD)"),
+  shiftType: zod.enum(["day", "night"]).optional(),
+});
+
+export const ListDailyAssignmentsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  assignedDate: zod.string(),
+  shiftType: zod.enum(["day", "night"]),
+  notes: zod.string().nullish(),
+  createdById: zod.number().nullish(),
+  createdAt: zod.string(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  role: zod.string(),
+  email: zod.string(),
+});
+export const ListDailyAssignmentsResponse = zod.array(
+  ListDailyAssignmentsResponseItem,
+);
+
+/**
+ * @summary Assign personnel to a specific date and shift type
+ */
+export const CreateDailyAssignmentBody = zod.object({
+  userId: zod.number(),
+  assignedDate: zod.string(),
+  shiftType: zod.enum(["day", "night"]),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Remove a daily assignment
+ */
+export const DeleteDailyAssignmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteDailyAssignmentResponse = zod.object({
   message: zod.string(),
 });
 

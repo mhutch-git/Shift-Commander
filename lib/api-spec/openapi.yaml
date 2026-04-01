@@ -18,6 +18,8 @@ tags:
     description: Shift management
   - name: shiftAssignments
     description: Shift assignments
+  - name: dailyAssignments
+    description: One-time daily shift assignments for any personnel
   - name: schedule
     description: Schedule calendar
   - name: dayOffRequests
@@ -384,6 +386,91 @@ paths:
       operationId: deleteShiftAssignment
       tags: [shiftAssignments]
       summary: Remove a shift assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # DAILY ASSIGNMENTS
+  /daily-assignments:
+    get:
+      operationId: listDailyAssignments
+      tags: [dailyAssignments]
+      summary: List daily assignments
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+          description: Filter by date (YYYY-MM-DD)
+        - name: start
+          in: query
+          schema:
+            type: string
+          description: Filter by start date (YYYY-MM-DD)
+        - name: end
+          in: query
+          schema:
+            type: string
+          description: Filter by end date (YYYY-MM-DD)
+        - name: shiftType
+          in: query
+          schema:
+            type: string
+            enum: [day, night]
+      responses:
+        "200":
+          description: Daily assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyAssignment"
+    post:
+      operationId: createDailyAssignment
+      tags: [dailyAssignments]
+      summary: Assign personnel to a specific date and shift type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDailyAssignmentBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyAssignment"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /daily-assignments/{id}:
+    delete:
+      operationId: deleteDailyAssignment
+      tags: [dailyAssignments]
+      summary: Remove a daily assignment
       parameters:
         - name: id
           in: path
@@ -810,7 +897,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, sergeant, deputy]
+          enum: [admin, sergeant, deputy, reserve]
         shiftId:
           type: ["integer", "null"]
       required:
@@ -831,7 +918,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, sergeant, deputy]
+          enum: [admin, sergeant, deputy, reserve]
         shiftId:
           type: ["integer", "null"]
         isActive:
@@ -1171,6 +1258,60 @@ components:
         - shiftId
         - shiftName
         - count
+
+    DailyAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        assignedDate:
+          type: string
+        shiftType:
+          type: string
+          enum: [day, night]
+        notes:
+          type: ["string", "null"]
+        createdById:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        email:
+          type: string
+      required:
+        - id
+        - userId
+        - assignedDate
+        - shiftType
+        - createdAt
+        - firstName
+        - lastName
+        - role
+        - email
+
+    CreateDailyAssignmentBody:
+      type: object
+      properties:
+        userId:
+          type: integer
+        assignedDate:
+          type: string
+        shiftType:
+          type: string
+          enum: [day, night]
+        notes:
+          type: string
+      required:
+        - userId
+        - assignedDate
+        - shiftType
 
     Notification:
       type: object

@@ -84,6 +84,7 @@ export const CreateUserBodyRole = {
   admin: "admin",
   sergeant: "sergeant",
   deputy: "deputy",
+  reserve: "reserve",
 } as const;
 
 export interface CreateUserBody {
@@ -103,6 +104,7 @@ export const UpdateUserBodyRole = {
   admin: "admin",
   sergeant: "sergeant",
   deputy: "deputy",
+  reserve: "reserve",
 } as const;
 
 export interface UpdateUserBody {
@@ -327,6 +329,45 @@ export interface DashboardSummary {
   recentRequests: DayOffRequest[];
 }
 
+export type DailyAssignmentShiftType =
+  (typeof DailyAssignmentShiftType)[keyof typeof DailyAssignmentShiftType];
+
+export const DailyAssignmentShiftType = {
+  day: "day",
+  night: "night",
+} as const;
+
+export interface DailyAssignment {
+  id: number;
+  userId: number;
+  assignedDate: string;
+  shiftType: DailyAssignmentShiftType;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  createdById?: number | null;
+  createdAt: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  email: string;
+}
+
+export type CreateDailyAssignmentBodyShiftType =
+  (typeof CreateDailyAssignmentBodyShiftType)[keyof typeof CreateDailyAssignmentBodyShiftType];
+
+export const CreateDailyAssignmentBodyShiftType = {
+  day: "day",
+  night: "night",
+} as const;
+
+export interface CreateDailyAssignmentBody {
+  userId: number;
+  assignedDate: string;
+  shiftType: CreateDailyAssignmentBodyShiftType;
+  notes?: string;
+}
+
 export interface Notification {
   id: number;
   recipientId: number;
@@ -340,6 +381,30 @@ export type ListShiftAssignmentsParams = {
   userId?: number;
   shiftId?: number;
 };
+
+export type ListDailyAssignmentsParams = {
+  /**
+   * Filter by date (YYYY-MM-DD)
+   */
+  date?: string;
+  /**
+   * Filter by start date (YYYY-MM-DD)
+   */
+  start?: string;
+  /**
+   * Filter by end date (YYYY-MM-DD)
+   */
+  end?: string;
+  shiftType?: ListDailyAssignmentsShiftType;
+};
+
+export type ListDailyAssignmentsShiftType =
+  (typeof ListDailyAssignmentsShiftType)[keyof typeof ListDailyAssignmentsShiftType];
+
+export const ListDailyAssignmentsShiftType = {
+  day: "day",
+  night: "night",
+} as const;
 
 export type GetScheduleParams = {
   /**

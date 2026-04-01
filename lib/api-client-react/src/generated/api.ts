@@ -18,15 +18,18 @@ import type {
 
 import type {
   AuthUser,
+  CreateDailyAssignmentBody,
   CreateDayOffRequestBody,
   CreateShiftAssignmentBody,
   CreateShiftBody,
   CreateUserBody,
+  DailyAssignment,
   DashboardSummary,
   DayOffRequest,
   ErrorResponse,
   GetScheduleParams,
   HealthStatus,
+  ListDailyAssignmentsParams,
   ListDayOffRequestsParams,
   ListShiftAssignmentsParams,
   LoginBody,
@@ -1443,6 +1446,277 @@ export const useDeleteShiftAssignment = <
   TContext
 > => {
   return useMutation(getDeleteShiftAssignmentMutationOptions(options));
+};
+
+/**
+ * @summary List daily assignments
+ */
+export const getListDailyAssignmentsUrl = (
+  params?: ListDailyAssignmentsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/daily-assignments?${stringifiedParams}`
+    : `/api/daily-assignments`;
+};
+
+export const listDailyAssignments = async (
+  params?: ListDailyAssignmentsParams,
+  options?: RequestInit,
+): Promise<DailyAssignment[]> => {
+  return customFetch<DailyAssignment[]>(getListDailyAssignmentsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListDailyAssignmentsQueryKey = (
+  params?: ListDailyAssignmentsParams,
+) => {
+  return [`/api/daily-assignments`, ...(params ? [params] : [])] as const;
+};
+
+export const getListDailyAssignmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listDailyAssignments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListDailyAssignmentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDailyAssignments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListDailyAssignmentsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listDailyAssignments>>
+  > = ({ signal }) =>
+    listDailyAssignments(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listDailyAssignments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListDailyAssignmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listDailyAssignments>>
+>;
+export type ListDailyAssignmentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List daily assignments
+ */
+
+export function useListDailyAssignments<
+  TData = Awaited<ReturnType<typeof listDailyAssignments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListDailyAssignmentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDailyAssignments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListDailyAssignmentsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Assign personnel to a specific date and shift type
+ */
+export const getCreateDailyAssignmentUrl = () => {
+  return `/api/daily-assignments`;
+};
+
+export const createDailyAssignment = async (
+  createDailyAssignmentBody: CreateDailyAssignmentBody,
+  options?: RequestInit,
+): Promise<DailyAssignment> => {
+  return customFetch<DailyAssignment>(getCreateDailyAssignmentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createDailyAssignmentBody),
+  });
+};
+
+export const getCreateDailyAssignmentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDailyAssignment>>,
+    TError,
+    { data: BodyType<CreateDailyAssignmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createDailyAssignment>>,
+  TError,
+  { data: BodyType<CreateDailyAssignmentBody> },
+  TContext
+> => {
+  const mutationKey = ["createDailyAssignment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createDailyAssignment>>,
+    { data: BodyType<CreateDailyAssignmentBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createDailyAssignment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateDailyAssignmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createDailyAssignment>>
+>;
+export type CreateDailyAssignmentMutationBody =
+  BodyType<CreateDailyAssignmentBody>;
+export type CreateDailyAssignmentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Assign personnel to a specific date and shift type
+ */
+export const useCreateDailyAssignment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDailyAssignment>>,
+    TError,
+    { data: BodyType<CreateDailyAssignmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createDailyAssignment>>,
+  TError,
+  { data: BodyType<CreateDailyAssignmentBody> },
+  TContext
+> => {
+  return useMutation(getCreateDailyAssignmentMutationOptions(options));
+};
+
+/**
+ * @summary Remove a daily assignment
+ */
+export const getDeleteDailyAssignmentUrl = (id: number) => {
+  return `/api/daily-assignments/${id}`;
+};
+
+export const deleteDailyAssignment = async (
+  id: number,
+  options?: RequestInit,
+): Promise<MessageResponse> => {
+  return customFetch<MessageResponse>(getDeleteDailyAssignmentUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteDailyAssignmentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteDailyAssignment>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteDailyAssignment>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteDailyAssignment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteDailyAssignment>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteDailyAssignment(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteDailyAssignmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteDailyAssignment>>
+>;
+
+export type DeleteDailyAssignmentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Remove a daily assignment
+ */
+export const useDeleteDailyAssignment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteDailyAssignment>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteDailyAssignment>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteDailyAssignmentMutationOptions(options));
 };
 
 /**

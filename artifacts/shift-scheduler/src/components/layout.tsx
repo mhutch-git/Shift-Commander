@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
   useSidebar
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Calendar, Shield, CalendarOff, Bell, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Calendar, Shield, CalendarOff, Bell, Users, LogOut, UserPlus } from "lucide-react";
 import badgeLogo from "@assets/INDIANA_SHERIFF_BADGE_PUTNAM_COUNTY_VECTOR_FILE_1775047938490.png";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   
+                  {(user?.role === "admin" || user?.role === "sergeant") && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={location === "/assign-to-shift"}>
+                        <Link href="/assign-to-shift" data-testid="nav-assign">
+                          <UserPlus />
+                          <span>Assign to Shift</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+
                   {user?.role === "admin" && (
                     <SidebarMenuItem className="mt-4 pt-4 border-t border-sidebar-border/50">
                       <SidebarMenuButton asChild isActive={location === "/users"}>

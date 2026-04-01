@@ -11,6 +11,7 @@ import ShiftDetailPage from "@/pages/shift-detail";
 import DayOffRequestsPage from "@/pages/day-off-requests";
 import UsersPage from "@/pages/users";
 import NotificationsPage from "@/pages/notifications";
+import AssignToShiftPage from "@/pages/assign-to-shift";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -63,6 +64,11 @@ function Router() {
       <Route path="/notifications">
         <ProtectedRoute>
           <NotificationsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/assign-to-shift">
+        <ProtectedRoute allowedRoles={["admin", "sergeant"]}>
+          <AssignToShiftPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

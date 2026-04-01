@@ -23,6 +23,7 @@ function RoleBadge({ role }: { role: string }) {
     admin: "bg-red-100 text-red-800 border-red-200",
     sergeant: "bg-blue-100 text-blue-700 border-blue-200",
     deputy: "bg-muted text-muted-foreground border-border",
+    reserve: "bg-green-100 text-green-700 border-green-200",
   };
   return (
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${colors[role] ?? colors.deputy}`}>
@@ -267,6 +268,7 @@ function UserFormFields({ form, setForm, shifts, isAdd }: {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="reserve">Reserve</SelectItem>
             <SelectItem value="deputy">Deputy</SelectItem>
             <SelectItem value="sergeant">Sergeant</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
