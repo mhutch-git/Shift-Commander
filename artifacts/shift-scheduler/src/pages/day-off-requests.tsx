@@ -286,12 +286,13 @@ export default function DayOffRequestsPage() {
                           <th className="pb-2 pr-4">Reason</th>
                           <th className="pb-2 pr-4">Status</th>
                           <th className="pb-2 pr-4">Submitted</th>
+                          <th className="pb-2 pr-4">Created By</th>
                           <th className="pb-2"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {myRequests.data?.length === 0 ? (
-                          <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No requests submitted</td></tr>
+                          <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">No requests submitted</td></tr>
                         ) : (
                           myRequests.data?.map((req) => (
                             <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`my-request-row-${req.id}`}>
@@ -301,6 +302,11 @@ export default function DayOffRequestsPage() {
                               <td className="py-2.5 pr-4"><StatusBadge status={req.status} /></td>
                               <td className="py-2.5 pr-4 text-muted-foreground text-xs">
                                 {new Date(req.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="py-2.5 pr-4 text-xs text-muted-foreground">
+                                {req.createdById && req.createdById !== req.userId
+                                  ? `${req.createdByFirstName ?? ""} ${req.createdByLastName ?? ""}`.trim()
+                                  : <span className="text-muted-foreground/50">Self</span>}
                               </td>
                               <td className="py-2.5">
                                 {req.status === "pending" && (
@@ -341,13 +347,14 @@ export default function DayOffRequestsPage() {
                             <th className="pb-2 pr-4">Date</th>
                             <th className="pb-2 pr-4">Type</th>
                             <th className="pb-2 pr-4">Reason</th>
+                            <th className="pb-2 pr-4">Created By</th>
                             <th className="pb-2 pr-4">Actions</th>
                             <th className="pb-2"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {pendingRequests.data?.length === 0 ? (
-                            <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No pending requests</td></tr>
+                            <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">No pending requests</td></tr>
                           ) : (
                             pendingRequests.data?.map((req) => (
                               <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`pending-request-row-${req.id}`}>
@@ -357,6 +364,11 @@ export default function DayOffRequestsPage() {
                                 <td className="py-2.5 pr-4">{req.requestedDate}</td>
                                 <td className="py-2.5 pr-4"><RequestTypeBadge type={req.requestType} /></td>
                                 <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
+                                <td className="py-2.5 pr-4 text-xs text-muted-foreground">
+                                  {req.createdById && req.createdById !== req.userId
+                                    ? `${req.createdByFirstName ?? ""} ${req.createdByLastName ?? ""}`.trim()
+                                    : <span className="text-muted-foreground/50">Self</span>}
+                                </td>
                                 <td className="py-2.5 pr-4">
                                   <div className="flex gap-2">
                                     <Button

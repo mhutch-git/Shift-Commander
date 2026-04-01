@@ -237,19 +237,33 @@ export default function AssignToShiftPage() {
                         {/* Shift type badge */}
                         <ShiftTypeBadge type={a.shiftType} />
                         {/* Name + role */}
-                        <div className="hidden sm:flex items-center gap-2 min-w-0">
-                          <span className="font-medium text-sm truncate">
-                            {a.firstName} {a.lastName}
-                          </span>
-                          <RoleBadge role={a.role} />
-                          {a.notes && (
-                            <span className="text-xs text-muted-foreground truncate">{a.notes}</span>
+                        <div className="hidden sm:flex flex-col gap-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm truncate">
+                              {a.firstName} {a.lastName}
+                            </span>
+                            <RoleBadge role={a.role} />
+                            {a.notes && (
+                              <span className="text-xs text-muted-foreground truncate">{a.notes}</span>
+                            )}
+                          </div>
+                          {a.createdByFirstName && (
+                            <span className="text-xs text-muted-foreground">
+                              Added by {a.createdByFirstName} {a.createdByLastName}
+                            </span>
                           )}
                         </div>
                         {/* Mobile: name below date row */}
-                        <div className="sm:hidden col-span-2 mt-1 flex items-center gap-2">
-                          <span className="font-medium text-sm">{a.firstName} {a.lastName}</span>
-                          <RoleBadge role={a.role} />
+                        <div className="sm:hidden col-span-2 mt-1 flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{a.firstName} {a.lastName}</span>
+                            <RoleBadge role={a.role} />
+                          </div>
+                          {a.createdByFirstName && (
+                            <span className="text-xs text-muted-foreground">
+                              Added by {a.createdByFirstName} {a.createdByLastName}
+                            </span>
+                          )}
                         </div>
                       </div>
                       {isAdminOrSgt && (

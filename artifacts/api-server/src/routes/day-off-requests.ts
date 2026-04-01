@@ -7,10 +7,12 @@ import {
   notificationLogsTable,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { sendEmail } from "../lib/email";
 
 const router = Router();
+const creatorUsersTable = alias(usersTable, "creator");
 
 async function getRequestWithDetails(id: number) {
   const [req_] = await db
@@ -21,6 +23,7 @@ async function getRequestWithDetails(id: number) {
       requestType: dayOffRequestsTable.requestType,
       reason: dayOffRequestsTable.reason,
       status: dayOffRequestsTable.status,
+      createdById: dayOffRequestsTable.createdById,
       reviewedById: dayOffRequestsTable.reviewedById,
       reviewNotes: dayOffRequestsTable.reviewNotes,
       reviewedAt: dayOffRequestsTable.reviewedAt,
@@ -28,9 +31,12 @@ async function getRequestWithDetails(id: number) {
       requesterFirstName: usersTable.firstName,
       requesterLastName: usersTable.lastName,
       requesterShiftId: usersTable.shiftId,
+      createdByFirstName: creatorUsersTable.firstName,
+      createdByLastName: creatorUsersTable.lastName,
     })
     .from(dayOffRequestsTable)
     .innerJoin(usersTable, eq(dayOffRequestsTable.userId, usersTable.id))
+    .leftJoin(creatorUsersTable, eq(dayOffRequestsTable.createdById, creatorUsersTable.id))
     .where(eq(dayOffRequestsTable.id, id))
     .limit(1);
 
@@ -51,6 +57,7 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
         requestType: dayOffRequestsTable.requestType,
         reason: dayOffRequestsTable.reason,
         status: dayOffRequestsTable.status,
+        createdById: dayOffRequestsTable.createdById,
         reviewedById: dayOffRequestsTable.reviewedById,
         reviewNotes: dayOffRequestsTable.reviewNotes,
         reviewedAt: dayOffRequestsTable.reviewedAt,
@@ -59,10 +66,13 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
         requesterLastName: usersTable.lastName,
         requesterShiftId: usersTable.shiftId,
         requesterShiftName: shiftsTable.name,
+        createdByFirstName: creatorUsersTable.firstName,
+        createdByLastName: creatorUsersTable.lastName,
       })
       .from(dayOffRequestsTable)
       .innerJoin(usersTable, eq(dayOffRequestsTable.userId, usersTable.id))
       .leftJoin(shiftsTable, eq(usersTable.shiftId, shiftsTable.id))
+      .leftJoin(creatorUsersTable, eq(dayOffRequestsTable.createdById, creatorUsersTable.id))
       .orderBy(desc(dayOffRequestsTable.createdAt));
 
     const conditions = [];
@@ -141,7 +151,7 @@ router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> =>
 
     const [request] = await db
       .insert(dayOffRequestsTable)
-      .values({ userId, requestedDate, requestType: resolvedType, reason, status: "pending" })
+      .values({ userId, requestedDate, requestType: resolvedType, reason, status: "pending", createdById: requesterId })
       .returning();
 
     const [user] = await db

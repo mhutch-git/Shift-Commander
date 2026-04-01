@@ -7,6 +7,7 @@ export const shiftAssignmentsTable = pgTable("shift_assignments", {
   userId: integer("user_id").notNull(),
   shiftId: integer("shift_id").notNull(),
   effectiveDate: date("effective_date").notNull().$default(() => new Date().toISOString().split("T")[0]!),
+  createdById: integer("created_by_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -197,6 +197,12 @@ export interface ShiftAssignment {
   lastName: string;
   email: string;
   role: string;
+  /** @nullable */
+  createdById?: number | null;
+  /** @nullable */
+  createdByFirstName?: string | null;
+  /** @nullable */
+  createdByLastName?: string | null;
   createdAt: string;
 }
 
@@ -291,6 +297,12 @@ export interface DayOffRequest {
   reviewerFirstName?: string | null;
   /** @nullable */
   reviewerLastName?: string | null;
+  /** @nullable */
+  createdById?: number | null;
+  /** @nullable */
+  createdByFirstName?: string | null;
+  /** @nullable */
+  createdByLastName?: string | null;
 }
 
 export type CreateDayOffRequestBodyRequestType =
@@ -346,6 +358,10 @@ export interface DailyAssignment {
   notes?: string | null;
   /** @nullable */
   createdById?: number | null;
+  /** @nullable */
+  createdByFirstName?: string | null;
+  /** @nullable */
+  createdByLastName?: string | null;
   createdAt: string;
   firstName: string;
   lastName: string;

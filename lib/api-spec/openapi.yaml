@@ -1027,6 +1027,12 @@ components:
           type: string
         role:
           type: string
+        createdById:
+          type: ["integer", "null"]
+        createdByFirstName:
+          type: ["string", "null"]
+        createdByLastName:
+          type: ["string", "null"]
         createdAt:
           type: string
       required:
@@ -1183,6 +1189,12 @@ components:
           type: ["string", "null"]
         reviewerLastName:
           type: ["string", "null"]
+        createdById:
+          type: ["integer", "null"]
+        createdByFirstName:
+          type: ["string", "null"]
+        createdByLastName:
+          type: ["string", "null"]
       required:
         - id
         - userId
@@ -1275,6 +1287,10 @@ components:
           type: ["string", "null"]
         createdById:
           type: ["integer", "null"]
+        createdByFirstName:
+          type: ["string", "null"]
+        createdByLastName:
+          type: ["string", "null"]
         createdAt:
           type: string
         firstName:

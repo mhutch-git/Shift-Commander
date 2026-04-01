@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { db, dailyAssignmentsTable, usersTable } from "@workspace/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router = Router();
+const creatorUsersTable = alias(usersTable, "creator");
 
 router.get("/daily-assignments", requireAuth, async (req, res): Promise<void> => {
   try {
@@ -28,6 +30,8 @@ router.get("/daily-assignments", requireAuth, async (req, res): Promise<void> =>
         shiftType: dailyAssignmentsTable.shiftType,
         notes: dailyAssignmentsTable.notes,
         createdById: dailyAssignmentsTable.createdById,
+        createdByFirstName: creatorUsersTable.firstName,
+        createdByLastName: creatorUsersTable.lastName,
         createdAt: dailyAssignmentsTable.createdAt,
         firstName: usersTable.firstName,
         lastName: usersTable.lastName,
@@ -36,6 +40,7 @@ router.get("/daily-assignments", requireAuth, async (req, res): Promise<void> =>
       })
       .from(dailyAssignmentsTable)
       .innerJoin(usersTable, eq(dailyAssignmentsTable.userId, usersTable.id))
+      .leftJoin(creatorUsersTable, eq(dailyAssignmentsTable.createdById, creatorUsersTable.id))
       .where(conditions.length > 0 ? and(...conditions) : sql`1=1`)
       .orderBy(dailyAssignmentsTable.assignedDate, usersTable.lastName);
 
@@ -77,12 +82,19 @@ router.post("/daily-assignments", requireRole(["admin", "sergeant"]), async (req
       .values({ userId: parsedUserId, assignedDate, shiftType, notes: notes ?? null, createdById })
       .returning();
 
+    // Fetch creator name
+    const [creator] = createdById !== parsedUserId
+      ? await db.select({ firstName: usersTable.firstName, lastName: usersTable.lastName }).from(usersTable).where(eq(usersTable.id, createdById)).limit(1)
+      : [{ firstName: user.firstName, lastName: user.lastName }];
+
     res.status(201).json({
       ...assignment,
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
       email: user.email,
+      createdByFirstName: creator?.firstName ?? null,
+      createdByLastName: creator?.lastName ?? null,
     });
   } catch (err) {
     req.log.error(err);

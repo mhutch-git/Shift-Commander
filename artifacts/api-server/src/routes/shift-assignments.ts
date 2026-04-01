@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { db, shiftAssignmentsTable, usersTable, shiftsTable, notificationLogsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { sendEmail } from "../lib/email";
 
 const router = Router();
+const creatorUsersTable = alias(usersTable, "creator");
 
 // Helper: get the shift id that the logged-in sergeant manages (null if not a sergeant or no shift)
 async function getSergeantShiftId(userId: number): Promise<number | null> {
@@ -26,14 +28,18 @@ router.get("/shift-assignments", requireAuth, async (req, res): Promise<void> =>
         userId: shiftAssignmentsTable.userId,
         shiftId: shiftAssignmentsTable.shiftId,
         effectiveDate: shiftAssignmentsTable.effectiveDate,
+        createdById: shiftAssignmentsTable.createdById,
         createdAt: shiftAssignmentsTable.createdAt,
         firstName: usersTable.firstName,
         lastName: usersTable.lastName,
         email: usersTable.email,
         role: usersTable.role,
+        createdByFirstName: creatorUsersTable.firstName,
+        createdByLastName: creatorUsersTable.lastName,
       })
       .from(shiftAssignmentsTable)
-      .innerJoin(usersTable, eq(shiftAssignmentsTable.userId, usersTable.id));
+      .innerJoin(usersTable, eq(shiftAssignmentsTable.userId, usersTable.id))
+      .leftJoin(creatorUsersTable, eq(shiftAssignmentsTable.createdById, creatorUsersTable.id));
 
     const conditions = [];
     if (shiftId) {
@@ -109,7 +115,7 @@ router.post("/shift-assignments", requireRole(["admin", "sergeant"]), async (req
 
     const [assignment] = await db
       .insert(shiftAssignmentsTable)
-      .values({ userId: parsedUserId, shiftId: parsedShiftId, effectiveDate: assignedDate })
+      .values({ userId: parsedUserId, shiftId: parsedShiftId, effectiveDate: assignedDate, createdById: requesterId })
       .returning();
 
     // Notify the affected user
@@ -140,6 +146,11 @@ router.post("/shift-assignments", requireRole(["admin", "sergeant"]), async (req
       }
     }
 
+    // Fetch creator name for response
+    const [creator] = requesterId !== parsedUserId
+      ? await db.select({ firstName: usersTable.firstName, lastName: usersTable.lastName }).from(usersTable).where(eq(usersTable.id, requesterId)).limit(1)
+      : [{ firstName: user?.firstName ?? null, lastName: user?.lastName ?? null }];
+
     // Return the full ShiftAssignment shape including user fields (as per OpenAPI spec)
     res.status(201).json({
       ...assignment,
@@ -147,6 +158,8 @@ router.post("/shift-assignments", requireRole(["admin", "sergeant"]), async (req
       lastName: user?.lastName ?? null,
       email: user?.email ?? null,
       role: user?.role ?? null,
+      createdByFirstName: creator?.firstName ?? null,
+      createdByLastName: creator?.lastName ?? null,
     });
   } catch (err) {
     req.log.error(err);

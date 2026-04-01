@@ -249,6 +249,9 @@ export const ListShiftAssignmentsResponseItem = zod.object({
   lastName: zod.string(),
   email: zod.string(),
   role: zod.string(),
+  createdById: zod.number().nullish(),
+  createdByFirstName: zod.string().nullish(),
+  createdByLastName: zod.string().nullish(),
   createdAt: zod.string(),
 });
 export const ListShiftAssignmentsResponse = zod.array(
@@ -297,6 +300,8 @@ export const ListDailyAssignmentsResponseItem = zod.object({
   shiftType: zod.enum(["day", "night"]),
   notes: zod.string().nullish(),
   createdById: zod.number().nullish(),
+  createdByFirstName: zod.string().nullish(),
+  createdByLastName: zod.string().nullish(),
   createdAt: zod.string(),
   firstName: zod.string(),
   lastName: zod.string(),
@@ -419,6 +424,9 @@ export const ListDayOffRequestsResponseItem = zod.object({
   requesterShiftName: zod.string().nullish(),
   reviewerFirstName: zod.string().nullish(),
   reviewerLastName: zod.string().nullish(),
+  createdById: zod.number().nullish(),
+  createdByFirstName: zod.string().nullish(),
+  createdByLastName: zod.string().nullish(),
 });
 export const ListDayOffRequestsResponse = zod.array(
   ListDayOffRequestsResponseItem,
@@ -460,6 +468,9 @@ export const GetDayOffRequestResponse = zod.object({
   requesterShiftName: zod.string().nullish(),
   reviewerFirstName: zod.string().nullish(),
   reviewerLastName: zod.string().nullish(),
+  createdById: zod.number().nullish(),
+  createdByFirstName: zod.string().nullish(),
+  createdByLastName: zod.string().nullish(),
 });
 
 /**
@@ -500,6 +511,9 @@ export const ApproveDayOffRequestResponse = zod.object({
   requesterShiftName: zod.string().nullish(),
   reviewerFirstName: zod.string().nullish(),
   reviewerLastName: zod.string().nullish(),
+  createdById: zod.number().nullish(),
+  createdByFirstName: zod.string().nullish(),
+  createdByLastName: zod.string().nullish(),
 });
 
 /**
@@ -529,6 +543,9 @@ export const DenyDayOffRequestResponse = zod.object({
   requesterShiftName: zod.string().nullish(),
   reviewerFirstName: zod.string().nullish(),
   reviewerLastName: zod.string().nullish(),
+  createdById: zod.number().nullish(),
+  createdByFirstName: zod.string().nullish(),
+  createdByLastName: zod.string().nullish(),
 });
 
 /**
@@ -563,6 +580,9 @@ export const GetDashboardSummaryResponse = zod.object({
       requesterShiftName: zod.string().nullish(),
       reviewerFirstName: zod.string().nullish(),
       reviewerLastName: zod.string().nullish(),
+      createdById: zod.number().nullish(),
+      createdByFirstName: zod.string().nullish(),
+      createdByLastName: zod.string().nullish(),
     }),
   ),
 });
