@@ -304,6 +304,8 @@ export interface CreateDayOffRequestBody {
   requestedDate: string;
   requestType: CreateDayOffRequestBodyRequestType;
   reason: string;
+  /** Admin/sergeant only — submit on behalf of another user */
+  onBehalfOfUserId?: number;
 }
 
 export interface ReviewRequestBody {

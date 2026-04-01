@@ -377,6 +377,10 @@ export const CreateDayOffRequestBody = zod.object({
   requestedDate: zod.string(),
   requestType: zod.enum(["pto", "training", "sick_leave"]),
   reason: zod.string(),
+  onBehalfOfUserId: zod
+    .number()
+    .optional()
+    .describe("Admin\/sergeant only — submit on behalf of another user"),
 });
 
 /**

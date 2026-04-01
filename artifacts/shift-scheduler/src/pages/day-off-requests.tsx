@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useListDayOffRequests, getListDayOffRequestsQueryKey,
   useCreateDayOffRequest, useApproveDayOffRequest, useDenyDayOffRequest,
+  useListUsers,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
@@ -62,12 +63,25 @@ export default function DayOffRequestsPage() {
   const [date, setDate] = useState("");
   const [requestType, setRequestType] = useState("pto");
   const [reason, setReason] = useState("");
+  const [onBehalfOfUserId, setOnBehalfOfUserId] = useState<number | "self">("self");
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewingId, setReviewingId] = useState<number | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "deny">("approve");
   const [reviewNotes, setReviewNotes] = useState("");
 
   const isSergeantOrAdmin = user?.role === "sergeant" || user?.role === "admin";
+
+  const allUsers = useListUsers(
+    {},
+    { query: { enabled: isSergeantOrAdmin } }
+  );
+
+  // Sergeants see their shift's users; admins see all
+  const selectableUsers = (allUsers.data ?? []).filter((u) => {
+    if (u.id === user?.id) return false;
+    if (user?.role === "admin") return true;
+    return u.shiftId === user?.shiftId;
+  });
 
   const myRequests = useListDayOffRequests(
     { userId: user?.id },
@@ -91,13 +105,28 @@ export default function DayOffRequestsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!date || !reason) return;
+    const targetId = onBehalfOfUserId === "self" ? undefined : onBehalfOfUserId;
     try {
-      await createRequest.mutateAsync({ data: { requestedDate: date, requestType, reason } });
+      await createRequest.mutateAsync({
+        data: {
+          requestedDate: date,
+          requestType,
+          reason,
+          ...(targetId ? { onBehalfOfUserId: targetId } : {}),
+        },
+      });
       queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ userId: user?.id }) });
+      if (targetId) queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ userId: targetId }) });
+      queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ status: "pending" }) });
       setDate("");
       setRequestType("pto");
       setReason("");
-      toast({ title: "Day-off request submitted" });
+      setOnBehalfOfUserId("self");
+      const targetName = selectableUsers.find((u) => u.id === targetId);
+      toast({
+        title: "Day-off request submitted",
+        description: targetName ? `Submitted on behalf of ${targetName.firstName} ${targetName.lastName}` : undefined,
+      });
     } catch {
       toast({ title: "Failed to submit request", variant: "destructive" });
     }
@@ -140,6 +169,30 @@ export default function DayOffRequestsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* "On behalf of" selector — admins and sergeants only */}
+              {isSergeantOrAdmin && selectableUsers.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Request For</Label>
+                  <Select
+                    value={String(onBehalfOfUserId)}
+                    onValueChange={(v) => setOnBehalfOfUserId(v === "self" ? "self" : parseInt(v))}
+                  >
+                    <SelectTrigger data-testid="select-on-behalf">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="self">Myself ({user?.firstName} {user?.lastName})</SelectItem>
+                      {selectableUsers.map((u) => (
+                        <SelectItem key={u.id} value={String(u.id)}>
+                          {u.firstName} {u.lastName}
+                          {user?.role === "admin" && u.shiftId ? ` — Shift ${u.shiftId}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="request-date">Requested Date</Label>

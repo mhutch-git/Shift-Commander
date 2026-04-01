@@ -109,8 +109,9 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
 
 router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> => {
   try {
-    const { requestedDate, requestType, reason } = req.body;
-    const userId = req.session.userId!;
+    const { requestedDate, requestType, reason, onBehalfOfUserId } = req.body;
+    const requesterId = req.session.userId!;
+    const requesterRole = req.session.role ?? "";
 
     if (!requestedDate || !reason) {
       res.status(400).json({ message: "requestedDate and reason required" });
@@ -118,6 +119,25 @@ router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> =>
     }
     const validTypes = ["pto", "training", "sick_leave"];
     const resolvedType = validTypes.includes(requestType) ? requestType : "pto";
+
+    // Determine the actual user this request is for
+    let userId = requesterId;
+    if (onBehalfOfUserId && onBehalfOfUserId !== requesterId) {
+      if (requesterRole === "admin") {
+        // Admin can submit for anyone — verify the target user exists
+        const [target] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, onBehalfOfUserId)).limit(1);
+        if (!target) { res.status(404).json({ message: "Target user not found" }); return; }
+        userId = onBehalfOfUserId;
+      } else if (requesterRole === "sergeant") {
+        // Sergeant can only submit for users in their own shift
+        const [requester] = await db.select({ shiftId: usersTable.shiftId }).from(usersTable).where(eq(usersTable.id, requesterId)).limit(1);
+        const [target] = await db.select({ id: usersTable.id, shiftId: usersTable.shiftId }).from(usersTable).where(eq(usersTable.id, onBehalfOfUserId)).limit(1);
+        if (!target) { res.status(404).json({ message: "Target user not found" }); return; }
+        if (target.shiftId !== requester?.shiftId) { res.status(403).json({ message: "Cannot submit on behalf of a user outside your shift" }); return; }
+        userId = onBehalfOfUserId;
+      }
+      // Deputies cannot submit on behalf of others — silently use their own id
+    }
 
     const [request] = await db
       .insert(dayOffRequestsTable)
