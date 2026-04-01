@@ -66,14 +66,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location.startsWith("/shifts")}>
-                      <Link href="/shifts" data-testid="nav-shifts">
-                        <Shield />
-                        <span>Shifts</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={location === "/day-off-requests"}>
                       <Link href="/day-off-requests" data-testid="nav-requests">
                         <CalendarOff />
@@ -115,6 +107,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={location.startsWith("/shifts")}>
+                      <Link href="/shifts" data-testid="nav-shifts">
+                        <Shield />
+                        <span>Shifts</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
