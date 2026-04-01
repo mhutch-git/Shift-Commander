@@ -94,6 +94,7 @@ export default function UsersPage() {
         role: form.role, isActive: form.isActive,
         shiftId: form.shiftId ? parseInt(form.shiftId) : null,
       };
+      if (form.email && form.email !== editUser.email) updates.email = form.email;
       if (form.password) updates.password = form.password;
       await updateUser.mutateAsync({ id: editUser.id, data: updates });
       queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
@@ -251,12 +252,10 @@ function UserFormFields({ form, setForm, shifts, isAdd }: {
           <Input value={form.lastName} onChange={f("lastName")} data-testid="input-last-name" />
         </div>
       </div>
-      {isAdd && (
-        <div className="space-y-1.5">
-          <Label>Email</Label>
-          <Input type="email" value={form.email} onChange={f("email")} data-testid="input-user-email" />
-        </div>
-      )}
+      <div className="space-y-1.5">
+        <Label>Email</Label>
+        <Input type="email" value={form.email} onChange={f("email")} data-testid="input-user-email" />
+      </div>
       <div className="space-y-1.5">
         <Label>{isAdd ? "Password" : "New Password (leave blank to keep)"}</Label>
         <Input type="password" value={form.password} onChange={f("password")} data-testid="input-user-password" />
