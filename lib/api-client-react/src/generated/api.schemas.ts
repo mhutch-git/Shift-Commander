@@ -220,6 +220,7 @@ export interface ScheduleShift {
   memberCount: number;
   /** @nullable */
   sergeantName?: string | null;
+  memberNames: string[];
 }
 
 export interface ScheduleDay {

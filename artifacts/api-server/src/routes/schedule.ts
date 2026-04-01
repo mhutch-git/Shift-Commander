@@ -18,6 +18,7 @@ type ShiftSummary = {
   shiftLetter: string;
   sergeantName: string | null;
   memberCount: number;
+  memberNames: string[];
 };
 
 /**
@@ -37,37 +38,50 @@ async function fetchShiftSummaries(): Promise<ShiftSummary[]> {
     .leftJoin(usersTable, eq(shiftsTable.sergeantId, usersTable.id))
     .orderBy(shiftsTable.id);
 
-  // Batch member counts in a single query
-  const countRows = await db
+  // Batch member counts and last names in a single query
+  const memberRows = await db
     .select({
       shiftId: shiftAssignmentsTable.shiftId,
-      count: sql<number>`count(*)::int`,
+      lastName: usersTable.lastName,
     })
     .from(shiftAssignmentsTable)
-    .groupBy(shiftAssignmentsTable.shiftId);
+    .innerJoin(usersTable, eq(shiftAssignmentsTable.userId, usersTable.id))
+    .orderBy(usersTable.lastName);
 
-  const countMap = new Map(countRows.map((r) => [r.shiftId, r.count]));
+  const membersMap = new Map<number, string[]>();
+  for (const row of memberRows) {
+    if (!membersMap.has(row.shiftId)) membersMap.set(row.shiftId, []);
+    membersMap.get(row.shiftId)!.push(row.lastName);
+  }
 
-  return shifts.map((s) => ({
-    ...s,
-    sergeantName: s.sergeantName?.trim() || null,
-    memberCount: countMap.get(s.id) ?? 0,
-  }));
+  return shifts.map((s) => {
+    const names = membersMap.get(s.id) ?? [];
+    return {
+      ...s,
+      sergeantName: s.sergeantName?.trim() || null,
+      memberCount: names.length,
+      memberNames: names,
+    };
+  });
 }
 
 function buildScheduleDay(date: Date, shiftSummaries: ShiftSummary[]) {
   const workingLetter = getWorkingShiftLetter(date);
   const dayOfWeek = date.getUTCDay();
 
-  const shiftsForDay = shiftSummaries.map((shift) => ({
-    id: shift.id,
-    name: shift.name,
-    shiftType: shift.shiftType,
-    shiftLetter: shift.shiftLetter,
-    isWorking: shift.shiftLetter === workingLetter,
-    memberCount: shift.shiftLetter === workingLetter ? shift.memberCount : 0,
-    sergeantName: shift.sergeantName,
-  }));
+  const shiftsForDay = shiftSummaries.map((shift) => {
+    const isWorking = shift.shiftLetter === workingLetter;
+    return {
+      id: shift.id,
+      name: shift.name,
+      shiftType: shift.shiftType,
+      shiftLetter: shift.shiftLetter,
+      isWorking,
+      memberCount: isWorking ? shift.memberCount : 0,
+      memberNames: isWorking ? shift.memberNames : [],
+      sergeantName: shift.sergeantName,
+    };
+  });
 
   return {
     date: formatDate(date),

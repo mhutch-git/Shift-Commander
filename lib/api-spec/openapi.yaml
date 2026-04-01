@@ -1000,6 +1000,10 @@ components:
           type: integer
         sergeantName:
           type: ["string", "null"]
+        memberNames:
+          type: array
+          items:
+            type: string
       required:
         - id
         - name
@@ -1007,6 +1011,7 @@ components:
         - shiftLetter
         - isWorking
         - memberCount
+        - memberNames
 
     TodaySchedule:
       type: object

@@ -303,6 +303,7 @@ export const GetScheduleResponseItem = zod.object({
       isWorking: zod.boolean(),
       memberCount: zod.number(),
       sergeantName: zod.string().nullish(),
+      memberNames: zod.array(zod.string()),
     }),
   ),
 });
