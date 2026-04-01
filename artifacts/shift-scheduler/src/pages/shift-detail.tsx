@@ -5,6 +5,7 @@ import {
   useListUsers,
   useCreateShiftAssignment, useDeleteShiftAssignment, useUpdateShift,
   getListShiftsQueryKey, getGetScheduleQueryKey,
+  type ShiftMember, type User,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
@@ -42,14 +43,14 @@ export default function ShiftDetailPage() {
 
   const canManage = user?.role === "admin" || user?.role === "sergeant";
 
-  const assignedUserIds = new Set(shift.data?.members?.map((m: any) => m.userId));
+  const assignedUserIds = new Set(shift.data?.members?.map((m: ShiftMember) => m.userId));
 
   const unassignedUsers = allUsers.data?.filter(
-    (u: any) => u.isActive && !assignedUserIds.has(u.id) && u.role !== "admin"
+    (u: User) => u.isActive && !assignedUserIds.has(u.id) && u.role !== "admin"
   ) ?? [];
 
   const sergeantCandidates = allUsers.data?.filter(
-    (u: any) => u.isActive && (u.role === "sergeant" || u.role === "admin")
+    (u: User) => u.isActive && (u.role === "sergeant" || u.role === "admin")
   ) ?? [];
 
   const handleAddMember = async () => {
@@ -179,7 +180,7 @@ export default function ShiftDetailPage() {
                     {shift.data?.members?.length === 0 ? (
                       <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">No members assigned to this shift</td></tr>
                     ) : (
-                      shift.data?.members?.map((member: any) => (
+                      shift.data?.members?.map((member: ShiftMember) => (
                         <tr key={member.id} className="hover:bg-muted/30 transition-colors" data-testid={`member-row-${member.id}`}>
                           <td className="py-2.5 pr-4 font-medium text-foreground">{member.firstName} {member.lastName}</td>
                           <td className="py-2.5 pr-4">
@@ -223,7 +224,7 @@ export default function ShiftDetailPage() {
                 <SelectValue placeholder="Select a deputy..." />
               </SelectTrigger>
               <SelectContent>
-                {unassignedUsers.map((u: any) => (
+                {unassignedUsers.map((u) => (
                   <SelectItem key={u.id} value={String(u.id)}>
                     {u.firstName} {u.lastName} ({u.role})
                   </SelectItem>
@@ -250,7 +251,7 @@ export default function ShiftDetailPage() {
                 <SelectValue placeholder="Select a sergeant..." />
               </SelectTrigger>
               <SelectContent>
-                {sergeantCandidates.map((u: any) => (
+                {sergeantCandidates.map((u) => (
                   <SelectItem key={u.id} value={String(u.id)}>
                     {u.firstName} {u.lastName} ({u.role})
                   </SelectItem>

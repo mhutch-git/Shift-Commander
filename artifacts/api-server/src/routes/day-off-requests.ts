@@ -38,6 +38,8 @@ async function getRequestWithDetails(id: number) {
 
 router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => {
   try {
+    const requesterId = req.session.userId!;
+    const requesterRole = req.session.role ?? "";
     const { userId, status, shiftId } = req.query;
 
     const query = db
@@ -62,9 +64,35 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
       .orderBy(desc(dayOffRequestsTable.createdAt));
 
     const conditions = [];
-    if (userId) conditions.push(eq(dayOffRequestsTable.userId, parseInt(userId as string)));
+
+    // Role-based scoping
+    if (requesterRole === "deputy") {
+      // Deputies can only see their own requests
+      conditions.push(eq(dayOffRequestsTable.userId, requesterId));
+    } else if (requesterRole === "sergeant") {
+      // Sergeants see requests from their own shift's personnel
+      const [sergeantShift] = await db
+        .select({ id: shiftsTable.id })
+        .from(shiftsTable)
+        .where(eq(shiftsTable.sergeantId, requesterId))
+        .limit(1);
+      if (sergeantShift) {
+        conditions.push(eq(usersTable.shiftId, sergeantShift.id));
+      } else {
+        // Sergeant not assigned to a shift — show only own requests
+        conditions.push(eq(dayOffRequestsTable.userId, requesterId));
+      }
+    }
+    // Admins see all (no restriction)
+
+    // Apply optional client-side filters on top
+    if (userId && requesterRole === "admin") {
+      conditions.push(eq(dayOffRequestsTable.userId, parseInt(userId as string)));
+    }
     if (status) conditions.push(eq(dayOffRequestsTable.status, status as string));
-    if (shiftId) conditions.push(eq(usersTable.shiftId, parseInt(shiftId as string)));
+    if (shiftId && requesterRole === "admin") {
+      conditions.push(eq(usersTable.shiftId, parseInt(shiftId as string)));
+    }
 
     const requests = conditions.length > 0
       ? await query.where(and(...conditions))

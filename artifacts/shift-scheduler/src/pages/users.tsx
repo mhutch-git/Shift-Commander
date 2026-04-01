@@ -3,7 +3,7 @@ import {
   useListUsers, getListUsersQueryKey,
   useListShifts,
   useCreateUser, useUpdateUser, useDeleteUser,
-  type CreateUserBodyRole,
+  type CreateUserBodyRole, type User, type Shift,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
@@ -45,7 +45,7 @@ export default function UsersPage() {
   const { toast } = useToast();
 
   const [addOpen, setAddOpen] = useState(false);
-  const [editUser, setEditUser] = useState<any | null>(null);
+  const [editUser, setEditUser] = useState<User | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm);
 
   const { data: users, isLoading } = useListUsers();
@@ -55,7 +55,7 @@ export default function UsersPage() {
   const deleteUser = useDeleteUser();
 
   const openAdd = () => { setForm(emptyForm); setAddOpen(true); };
-  const openEdit = (u: any) => {
+  const openEdit = (u: User) => {
     setEditUser(u);
     setForm({
       email: u.email, password: "", firstName: u.firstName,
@@ -77,8 +77,9 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
       setAddOpen(false);
       toast({ title: "Personnel account created" });
-    } catch (err: any) {
-      toast({ title: "Failed to create user", description: err?.message, variant: "destructive" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : undefined;
+      toast({ title: "Failed to create user", description: msg, variant: "destructive" });
     }
   };
 
@@ -100,7 +101,7 @@ export default function UsersPage() {
     }
   };
 
-  const handleToggleActive = async (u: any) => {
+  const handleToggleActive = async (u: User) => {
     try {
       await updateUser.mutateAsync({ id: u.id, data: { isActive: !u.isActive } });
       queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
@@ -142,7 +143,7 @@ export default function UsersPage() {
                     {users?.length === 0 ? (
                       <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No personnel found</td></tr>
                     ) : (
-                      users?.map((u: any) => (
+                      users?.map((u) => (
                         <tr key={u.id} className="hover:bg-muted/30 transition-colors" data-testid={`user-row-${u.id}`}>
                           <td className="py-2.5 pr-4 font-medium text-foreground">{u.firstName} {u.lastName}</td>
                           <td className="py-2.5 pr-4 text-muted-foreground text-xs">{u.email}</td>
@@ -226,7 +227,7 @@ export default function UsersPage() {
 }
 
 function UserFormFields({ form, setForm, shifts, isAdd }: {
-  form: UserForm; setForm: (f: UserForm) => void; shifts: any[]; isAdd?: boolean;
+  form: UserForm; setForm: (f: UserForm) => void; shifts: Shift[]; isAdd?: boolean;
 }) {
   const f = (k: keyof UserForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [k]: e.target.value });
@@ -274,7 +275,7 @@ function UserFormFields({ form, setForm, shifts, isAdd }: {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">Unassigned</SelectItem>
-            {shifts.map((s: any) => (
+            {shifts.map((s) => (
               <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
             ))}
           </SelectContent>

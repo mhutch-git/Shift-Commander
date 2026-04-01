@@ -6,6 +6,16 @@ import { sendEmail } from "../lib/email";
 
 const router = Router();
 
+// Helper: get the shift id that the logged-in sergeant manages (null if not a sergeant or no shift)
+async function getSergeantShiftId(userId: number): Promise<number | null> {
+  const [shift] = await db
+    .select({ id: shiftsTable.id })
+    .from(shiftsTable)
+    .where(eq(shiftsTable.sergeantId, userId))
+    .limit(1);
+  return shift?.id ?? null;
+}
+
 router.get("/shift-assignments", requireAuth, async (req, res): Promise<void> => {
   try {
     const { shiftId, userId } = req.query;
@@ -40,7 +50,8 @@ router.get("/shift-assignments", requireAuth, async (req, res): Promise<void> =>
   }
 });
 
-router.post("/shift-assignments", requireRole(["admin"]), async (req, res): Promise<void> => {
+// Admin OR sergeant (scoped to their own shift)
+router.post("/shift-assignments", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
   try {
     const { userId, shiftId, effectiveDate } = req.body;
     if (!userId || !shiftId) {
@@ -51,15 +62,26 @@ router.post("/shift-assignments", requireRole(["admin"]), async (req, res): Prom
     const parsedUserId = parseInt(userId);
     const parsedShiftId = parseInt(shiftId);
     const assignedDate = effectiveDate || new Date().toISOString().split("T")[0];
+    const requesterId = req.session.userId!;
+    const requesterRole = req.session.role ?? "";
 
-    // Get previous shift info for notification context
+    // Sergeants may only assign personnel to their own shift
+    if (requesterRole === "sergeant") {
+      const sergeantShiftId = await getSergeantShiftId(requesterId);
+      if (sergeantShiftId !== parsedShiftId) {
+        res.status(403).json({ message: "Sergeants can only assign personnel to their own shift" });
+        return;
+      }
+    }
+
+    // Get user info for notification
     const [user] = await db
       .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, shiftId: usersTable.shiftId, email: usersTable.email })
       .from(usersTable)
       .where(eq(usersTable.id, parsedUserId))
       .limit(1);
 
-    // Get new shift name
+    // Get new shift info
     const [newShift] = await db
       .select({ name: shiftsTable.name, sergeantId: shiftsTable.sergeantId })
       .from(shiftsTable)
@@ -99,8 +121,8 @@ router.post("/shift-assignments", requireRole(["admin"]), async (req, res): Prom
         `${user.firstName} ${user.lastName},\n\nYou have been assigned to ${newShift?.name ?? "a new shift"}, effective ${assignedDate}.\n\nPlease log in to the Shift Scheduler to view your schedule.`
       );
 
-      // Also notify new shift's sergeant if there is one
-      if (newShift?.sergeantId && newShift.sergeantId !== parsedUserId) {
+      // Notify new shift's sergeant if different from requester
+      if (newShift?.sergeantId && newShift.sergeantId !== parsedUserId && newShift.sergeantId !== requesterId) {
         await db.insert(notificationLogsTable).values({
           recipientId: newShift.sergeantId,
           type: "shift_assigned",
@@ -117,9 +139,12 @@ router.post("/shift-assignments", requireRole(["admin"]), async (req, res): Prom
   }
 });
 
-router.delete("/shift-assignments/:id", requireRole(["admin"]), async (req, res): Promise<void> => {
+// Admin OR sergeant (scoped to their own shift)
+router.delete("/shift-assignments/:id", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
   try {
     const id = parseInt(req.params.id as string);
+    const requesterId = req.session.userId!;
+    const requesterRole = req.session.role ?? "";
 
     const [assignment] = await db
       .select()
@@ -127,27 +152,39 @@ router.delete("/shift-assignments/:id", requireRole(["admin"]), async (req, res)
       .where(eq(shiftAssignmentsTable.id, id))
       .limit(1);
 
-    if (assignment) {
-      await db
-        .update(usersTable)
-        .set({ shiftId: null })
-        .where(eq(usersTable.id, assignment.userId));
+    if (!assignment) {
+      res.status(404).json({ message: "Assignment not found" });
+      return;
+    }
 
-      // Notify the affected user
-      const [user] = await db
-        .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email })
-        .from(usersTable)
-        .where(eq(usersTable.id, assignment.userId))
-        .limit(1);
-
-      if (user) {
-        await db.insert(notificationLogsTable).values({
-          recipientId: assignment.userId,
-          type: "shift_assigned",
-          message: "Your shift assignment has been removed. Please contact your supervisor for details.",
-          isRead: false,
-        });
+    // Sergeants may only remove personnel from their own shift
+    if (requesterRole === "sergeant") {
+      const sergeantShiftId = await getSergeantShiftId(requesterId);
+      if (sergeantShiftId !== assignment.shiftId) {
+        res.status(403).json({ message: "Sergeants can only remove assignments from their own shift" });
+        return;
       }
+    }
+
+    await db
+      .update(usersTable)
+      .set({ shiftId: null })
+      .where(eq(usersTable.id, assignment.userId));
+
+    // Notify the affected user
+    const [user] = await db
+      .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, assignment.userId))
+      .limit(1);
+
+    if (user) {
+      await db.insert(notificationLogsTable).values({
+        recipientId: assignment.userId,
+        type: "shift_assigned",
+        message: "Your shift assignment has been removed. Please contact your supervisor for details.",
+        isRead: false,
+      });
     }
 
     await db.delete(shiftAssignmentsTable).where(eq(shiftAssignmentsTable.id, id));

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetSchedule, getGetScheduleQueryKey } from "@workspace/api-client-react";
+import { useGetSchedule, getGetScheduleQueryKey, type ScheduleDay, type ScheduleShift } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
 
 export default function SchedulePage() {
   const [viewDate, setViewDate] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState<any | null>(null);
+  const [selectedDay, setSelectedDay] = useState<ScheduleDay | null>(null);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -56,8 +56,8 @@ export default function SchedulePage() {
   const days = getDaysInMonth(year, month);
   const firstDayOfWeek = days[0].getUTCDay();
 
-  const scheduleMap: Record<string, any> = {};
-  schedule.data?.forEach((day: any) => { scheduleMap[day.date] = day; });
+  const scheduleMap: Record<string, ScheduleDay> = {};
+  schedule.data?.forEach((day) => { scheduleMap[day.date] = day; });
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -166,7 +166,7 @@ export default function SchedulePage() {
                   )}
                 </SheetHeader>
                 <div className="mt-6 space-y-3">
-                  {selectedDay.shifts?.map((shift: any) => (
+                  {selectedDay.shifts?.map((shift: ScheduleShift) => (
                     <div
                       key={shift.id}
                       className={`p-3 rounded-md border ${shift.isWorking ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-border opacity-60"}`}

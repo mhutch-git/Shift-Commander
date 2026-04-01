@@ -1,4 +1,4 @@
-import { useListShifts } from "@workspace/api-client-react";
+import { useListShifts, type ShiftWithRoster, type ShiftMember } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Shield, Sun, Moon, Users, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 
-function ShiftCard({ shift }: { shift: any }) {
+function ShiftCard({ shift }: { shift: ShiftWithRoster }) {
   const isDay = shift.shiftType === "day";
   const Icon = isDay ? Sun : Moon;
   const letterColor = shift.shiftLetter === "a" ? "bg-primary/10 text-primary border-primary/20" : "bg-amber-100 text-amber-800 border-amber-200";
@@ -46,7 +46,7 @@ function ShiftCard({ shift }: { shift: any }) {
           </div>
           <div className="mt-3 pt-3 border-t border-border/60">
             <div className="flex flex-wrap gap-1">
-              {shift.members?.slice(0, 4).map((m: any) => (
+              {shift.members?.slice(0, 4).map((m: ShiftMember) => (
                 <span key={m.id} className="inline-block px-2 py-0.5 bg-muted rounded text-xs text-muted-foreground">
                   {m.firstName} {m.lastName.charAt(0)}.
                 </span>
@@ -80,7 +80,7 @@ export default function ShiftsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {shifts?.map((shift: any) => (
+            {shifts?.map((shift) => (
               <ShiftCard key={shift.id} shift={shift} />
             ))}
           </div>

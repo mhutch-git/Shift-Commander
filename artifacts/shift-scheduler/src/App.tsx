@@ -16,8 +16,9 @@ import NotFound from "@/pages/not-found";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error: any) => {
-        if (error?.status === 401 || error?.status === 403) return false;
+      retry: (failureCount, error) => {
+        const status = (error as { status?: number })?.status;
+        if (status === 401 || status === 403) return false;
         return failureCount < 2;
       },
       staleTime: 30_000,

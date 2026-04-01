@@ -185,7 +185,7 @@ export default function DayOffRequestsPage() {
                         {myRequests.data?.length === 0 ? (
                           <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">No requests submitted</td></tr>
                         ) : (
-                          myRequests.data?.map((req: any) => (
+                          myRequests.data?.map((req) => (
                             <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`my-request-row-${req.id}`}>
                               <td className="py-2.5 pr-4 font-medium text-foreground">{req.requestedDate}</td>
                               <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
@@ -225,7 +225,7 @@ export default function DayOffRequestsPage() {
                           {pendingRequests.data?.length === 0 ? (
                             <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">No pending requests</td></tr>
                           ) : (
-                            pendingRequests.data?.map((req: any) => (
+                            pendingRequests.data?.map((req) => (
                               <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`pending-request-row-${req.id}`}>
                                 <td className="py-2.5 pr-4 font-medium text-foreground">
                                   {req.requesterFirstName} {req.requesterLastName}

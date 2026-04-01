@@ -1,6 +1,7 @@
 import {
   useListNotifications, getListNotificationsQueryKey,
   useMarkNotificationRead, useMarkAllNotificationsRead,
+  type Notification,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
@@ -18,7 +19,7 @@ export default function NotificationsPage() {
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
 
-  const unread = notifications?.filter((n: any) => !n.isRead) ?? [];
+  const unread = notifications?.filter((n: Notification) => !n.isRead) ?? [];
 
   const handleMarkRead = async (id: number) => {
     try {
@@ -80,7 +81,7 @@ export default function NotificationsPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {notifications?.map((n: any) => (
+                {notifications?.map((n: Notification) => (
                   <div
                     key={n.id}
                     className={`flex items-start gap-3 py-3 transition-colors ${!n.isRead ? "bg-primary/3" : ""}`}

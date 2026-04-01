@@ -1,4 +1,7 @@
-import { useGetDashboardSummary, useGetTodaySchedule } from "@workspace/api-client-react";
+import {
+  useGetDashboardSummary, useGetTodaySchedule,
+  type ScheduleShiftWithCount, type ShiftCount, type DayOffRequest,
+} from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -103,7 +106,7 @@ export default function DashboardPage() {
                 <div className="space-y-3">{Array(2).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
               ) : (
                 <div className="space-y-3">
-                  {todaySchedule.data?.workingShifts?.map((shift: any) => (
+                  {todaySchedule.data?.workingShifts?.map((shift: ScheduleShiftWithCount) => (
                     <Link key={shift.id} href={`/shifts/${shift.id}`}>
                       <div
                         className="flex items-center justify-between p-3 rounded-md bg-primary/5 border border-primary/15 hover:bg-primary/10 cursor-pointer transition-colors"
@@ -120,7 +123,7 @@ export default function DashboardPage() {
                       </div>
                     </Link>
                   ))}
-                  {todaySchedule.data?.offShifts?.map((shift: any) => (
+                  {todaySchedule.data?.offShifts?.map((shift: ScheduleShiftWithCount) => (
                     <div
                       key={shift.id}
                       className="flex items-center justify-between p-3 rounded-md bg-muted border border-border opacity-60"
@@ -150,7 +153,7 @@ export default function DashboardPage() {
                 <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
               ) : (
                 <div className="space-y-2">
-                  {summary.data?.shiftCounts?.map((sc: any) => (
+                  {summary.data?.shiftCounts?.map((sc: ShiftCount) => (
                     <Link key={sc.shiftId} href={`/shifts/${sc.shiftId}`}>
                       <div
                         className="flex items-center justify-between p-3 rounded-md border border-border hover:bg-muted/50 cursor-pointer transition-colors"
@@ -192,7 +195,7 @@ export default function DashboardPage() {
                     {summary.data?.recentRequests?.length === 0 ? (
                       <tr><td colSpan={3} className="py-4 text-center text-muted-foreground text-sm">No recent requests</td></tr>
                     ) : (
-                      summary.data?.recentRequests?.map((req: any) => (
+                      summary.data?.recentRequests?.map((req: DayOffRequest) => (
                         <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`request-row-${req.id}`}>
                           <td className="py-2.5 pr-4 font-medium text-foreground">{req.requesterFirstName} {req.requesterLastName}</td>
                           <td className="py-2.5 pr-4 text-muted-foreground">{req.requestedDate}</td>
