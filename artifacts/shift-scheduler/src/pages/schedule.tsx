@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 
 function addMonths(date: Date, n: number): Date {
@@ -31,43 +32,13 @@ function getDaysInMonth(year: number, month: number) {
   return days;
 }
 
-const SHORT_DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
 
-function ShiftCell({ shift }: { shift: ScheduleShift | undefined }) {
-  if (!shift || !shift.isWorking) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <span className="text-xs text-muted-foreground italic">Off duty</span>
-      </div>
-    );
-  }
-
-  const names = shift.memberNames ?? [];
-
-  return (
-    <div className="space-y-1">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-        {shift.name}
-      </p>
-      {names.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">No members</p>
-      ) : (
-        <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-          {names.map((name) => (
-            <span key={name} className="text-xs text-foreground font-medium leading-tight">
-              {name}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function SchedulePage() {
   const [viewDate, setViewDate] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<ScheduleDay | null>(null);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -79,6 +50,7 @@ export default function SchedulePage() {
   );
 
   const days = getDaysInMonth(year, month);
+  const firstDayOfWeek = days[0].getUTCDay();
 
   const scheduleMap: Record<string, ScheduleDay> = {};
   schedule.data?.forEach((day) => { scheduleMap[day.date] = day; });
@@ -107,83 +79,175 @@ export default function SchedulePage() {
               <ChevronRight className="w-4 h-4" />
             </Button>
           </CardHeader>
-          <CardContent className="px-0 pb-0">
-            {/* Column headers */}
-            <div className="grid grid-cols-[80px_1fr_1fr] border-b border-border">
-              <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Date
+          <CardContent className="px-2 pb-4 md:px-4">
+            {/* Legend */}
+            <div className="flex gap-4 mb-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <Sun className="w-3 h-3 text-amber-500" />
+                <span>Day Shift</span>
               </div>
-              <div className="px-3 py-2 border-l border-border flex items-center gap-1.5 text-xs font-semibold text-amber-600 uppercase tracking-wider">
-                <Sun className="w-3.5 h-3.5" />
-                Day Shift
+              <div className="flex items-center gap-1.5">
+                <Moon className="w-3 h-3 text-primary" />
+                <span>Night Shift</span>
               </div>
-              <div className="px-3 py-2 border-l border-border flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
-                <Moon className="w-3.5 h-3.5" />
-                Night Shift
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm bg-primary/20 border border-primary/40" />
+                <span>Shift A</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm bg-accent/20 border border-accent/40" />
+                <span>Shift B</span>
               </div>
             </div>
 
-            {/* Rows */}
-            <div className="divide-y divide-border">
-              {schedule.isLoading
-                ? Array(10).fill(0).map((_, i) => (
-                    <div key={i} className="grid grid-cols-[80px_1fr_1fr] py-3">
-                      <Skeleton className="h-8 mx-3" />
-                      <Skeleton className="h-8 mx-3" />
-                      <Skeleton className="h-8 mx-3" />
-                    </div>
-                  ))
-                : days.map((d) => {
-                    const key = d.toISOString().split("T")[0];
-                    const info = scheduleMap[key];
-                    const isToday = key === today;
-                    const dayLabel = SHORT_DAY[d.getUTCDay()];
-                    const dayNum = d.getUTCDate();
+            {/* Day-of-week header */}
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {DAY_NAMES.map((d) => (
+                <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+              ))}
+            </div>
 
-                    const dayShift = info?.shifts?.find(
-                      (s: ScheduleShift) => s.shiftType === "day"
-                    );
-                    const nightShift = info?.shifts?.find(
-                      (s: ScheduleShift) => s.shiftType === "night"
-                    );
+            {/* Calendar grid */}
+            {schedule.isLoading ? (
+              <div className="grid grid-cols-7 gap-1">
+                {Array(35).fill(0).map((_, i) => (
+                  <Skeleton key={i} className="h-28 rounded" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-1">
+                {Array(firstDayOfWeek).fill(null).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                {days.map((d) => {
+                  const key = d.toISOString().split("T")[0];
+                  const info = scheduleMap[key];
+                  const letter = info?.workingShiftLetter;
+                  const isToday = key === today;
 
-                    const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+                  const dayShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "day");
+                  const nightShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "night");
 
+                  const dayNames = dayShift?.isWorking ? (dayShift.memberNames ?? []) : [];
+                  const nightNames = nightShift?.isWorking ? (nightShift.memberNames ?? []) : [];
+
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedDay(info || { date: key })}
+                      data-testid={`day-cell-${key}`}
+                      className={`relative flex flex-col items-start p-1.5 rounded-md border text-left transition-colors focus:outline-none min-h-[110px]
+                        ${letter === "a" ? "bg-primary/10 border-primary/30 hover:bg-primary/20" : ""}
+                        ${letter === "b" ? "bg-accent/10 border-accent/30 hover:bg-accent/20" : ""}
+                        ${!letter ? "bg-muted/30 border-border hover:bg-muted/50" : ""}
+                        ${isToday ? "ring-2 ring-primary ring-offset-1" : ""}
+                      `}
+                    >
+                      {/* Date number */}
+                      <span className={`text-xs font-bold leading-none mb-1 ${isToday ? "text-primary" : "text-foreground"}`}>
+                        {d.getUTCDate()}
+                        {letter && (
+                          <span className={`ml-1 text-[9px] font-bold uppercase ${letter === "a" ? "text-primary" : "text-amber-700"}`}>
+                            {letter.toUpperCase()}
+                          </span>
+                        )}
+                      </span>
+
+                      {/* Day shift names */}
+                      {dayNames.length > 0 && (
+                        <div className="w-full mb-1">
+                          <div className="flex items-center gap-0.5 mb-0.5">
+                            <Sun className="w-2 h-2 text-amber-500 flex-shrink-0" />
+                          </div>
+                          <div className="flex flex-col gap-0 leading-tight">
+                            {dayNames.map((name) => (
+                              <span key={name} className="text-[9px] text-foreground/80 font-medium truncate">
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Night shift names */}
+                      {nightNames.length > 0 && (
+                        <div className="w-full">
+                          <div className="flex items-center gap-0.5 mb-0.5">
+                            <Moon className="w-2 h-2 text-primary flex-shrink-0" />
+                          </div>
+                          <div className="flex flex-col gap-0 leading-tight">
+                            {nightNames.map((name) => (
+                              <span key={name} className="text-[9px] text-foreground/80 font-medium truncate">
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Day detail sheet */}
+        <Sheet open={!!selectedDay} onOpenChange={() => setSelectedDay(null)}>
+          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+            {selectedDay && (
+              <>
+                <SheetHeader>
+                  <SheetTitle>
+                    {new Date(selectedDay.date + "T00:00:00Z").toLocaleDateString("en-US", {
+                      weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC"
+                    })}
+                  </SheetTitle>
+                  {selectedDay.workingShiftLetter && (
+                    <p className="text-sm text-muted-foreground">
+                      Shift {selectedDay.workingShiftLetter?.toUpperCase()} on duty
+                    </p>
+                  )}
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  {[
+                    { icon: Sun, label: "Day Shift", type: "day", color: "text-amber-600" },
+                    { icon: Moon, label: "Night Shift", type: "night", color: "text-primary" },
+                  ].map(({ icon: Icon, label, type, color }) => {
+                    const shift = selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type);
+                    if (!shift) return null;
                     return (
                       <div
-                        key={key}
-                        data-testid={`day-row-${key}`}
-                        className={`grid grid-cols-[80px_1fr_1fr] min-h-[52px] transition-colors
-                          ${isToday ? "bg-primary/5" : isWeekend ? "bg-muted/20" : ""}
-                        `}
+                        key={type}
+                        className={`p-4 rounded-md border ${shift.isWorking ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-border opacity-60"}`}
                       >
-                        {/* Date cell */}
-                        <div className={`px-3 py-2.5 flex flex-col justify-center
-                          ${isToday ? "border-l-2 border-primary" : ""}
-                        `}>
-                          <span className={`text-sm font-bold leading-tight ${isToday ? "text-primary" : "text-foreground"}`}>
-                            {dayNum}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                            {dayLabel}
-                          </span>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Icon className={`w-4 h-4 ${color}`} />
+                          <p className="font-semibold text-sm text-foreground">{shift.name}</p>
+                          {shift.isWorking ? (
+                            <span className="ml-auto text-xs font-medium text-primary">{shift.memberCount} on duty</span>
+                          ) : (
+                            <span className="ml-auto text-xs text-muted-foreground">Off duty</span>
+                          )}
                         </div>
-
-                        {/* Day shift cell */}
-                        <div className="px-3 py-2.5 border-l border-border">
-                          <ShiftCell shift={dayShift} />
-                        </div>
-
-                        {/* Night shift cell */}
-                        <div className="px-3 py-2.5 border-l border-border">
-                          <ShiftCell shift={nightShift} />
-                        </div>
+                        {shift.isWorking && shift.memberNames && shift.memberNames.length > 0 && (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                            {shift.memberNames.map((name: string) => (
+                              <span key={name} className="text-sm text-foreground">{name}</span>
+                            ))}
+                          </div>
+                        )}
+                        {shift.sergeantName && (
+                          <p className="text-xs text-muted-foreground mt-2">Sgt. {shift.sergeantName}</p>
+                        )}
                       </div>
                     );
                   })}
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
       </div>
     </AppLayout>
   );
