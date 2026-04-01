@@ -207,8 +207,9 @@ export interface ScheduleShiftWithCount {
   shiftType: string;
   shiftLetter: string;
   memberCount: number;
+  isWorking?: boolean;
   /** @nullable */
-  sergeantId?: number | null;
+  sergeantName?: string | null;
 }
 
 export interface TodaySchedule {

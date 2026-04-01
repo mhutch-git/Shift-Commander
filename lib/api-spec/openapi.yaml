@@ -944,8 +944,10 @@ components:
           type: string
         memberCount:
           type: integer
-        sergeantId:
-          type: ["integer", "null"]
+        isWorking:
+          type: boolean
+        sergeantName:
+          type: ["string", "null"]
       required:
         - id
         - name

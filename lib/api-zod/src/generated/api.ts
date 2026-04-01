@@ -301,7 +301,8 @@ export const GetTodayScheduleResponse = zod.object({
       shiftType: zod.string(),
       shiftLetter: zod.string(),
       memberCount: zod.number(),
-      sergeantId: zod.number().nullish(),
+      isWorking: zod.boolean().optional(),
+      sergeantName: zod.string().nullish(),
     }),
   ),
   offShifts: zod.array(
@@ -311,7 +312,8 @@ export const GetTodayScheduleResponse = zod.object({
       shiftType: zod.string(),
       shiftLetter: zod.string(),
       memberCount: zod.number(),
-      sergeantId: zod.number().nullish(),
+      isWorking: zod.boolean().optional(),
+      sergeantName: zod.string().nullish(),
     }),
   ),
 });
