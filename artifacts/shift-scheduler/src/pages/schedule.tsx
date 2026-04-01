@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { useGetSchedule, getGetScheduleQueryKey, type ScheduleDay, type ScheduleShift } from "@workspace/api-client-react";
+import { useState, useMemo } from "react";
+import {
+  useGetSchedule, getGetScheduleQueryKey, type ScheduleDay, type ScheduleShift,
+  useListDayOffRequests,
+} from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +52,21 @@ export default function SchedulePage() {
     { query: { queryKey: getGetScheduleQueryKey({ start, end }) } }
   );
 
+  // Fetch approved day-off requests for this month
+  const approvedRequests = useListDayOffRequests({ status: "approved" });
+
+  // Build a map: date -> Set of last names who are on approved day off
+  const dayOffMap = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    for (const req of approvedRequests.data ?? []) {
+      const date = req.requestedDate;
+      if (date < start || date > end) continue;
+      if (!map[date]) map[date] = new Set();
+      if (req.requesterLastName) map[date].add(req.requesterLastName);
+    }
+    return map;
+  }, [approvedRequests.data, start, end]);
+
   const days = getDaysInMonth(year, month);
   const firstDayOfWeek = days[0].getUTCDay();
 
@@ -81,7 +99,7 @@ export default function SchedulePage() {
           </CardHeader>
           <CardContent className="px-2 pb-4 md:px-4">
             {/* Legend */}
-            <div className="flex gap-4 mb-3 text-xs text-muted-foreground">
+            <div className="flex flex-wrap gap-4 mb-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <Sun className="w-3 h-3 text-amber-500" />
                 <span>Day Shift</span>
@@ -97,6 +115,10 @@ export default function SchedulePage() {
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-sm bg-accent/20 border border-accent/40" />
                 <span>Shift B</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300" />
+                <span className="text-red-600">Day Off</span>
               </div>
             </div>
 
@@ -124,6 +146,7 @@ export default function SchedulePage() {
                   const info = scheduleMap[key];
                   const letter = info?.workingShiftLetter;
                   const isToday = key === today;
+                  const dayOffNames = dayOffMap[key] ?? new Set<string>();
 
                   const dayShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "day" && s.isWorking);
                   const nightShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "night" && s.isWorking);
@@ -161,11 +184,17 @@ export default function SchedulePage() {
                             <Sun className="w-2 h-2 text-amber-500 flex-shrink-0" />
                           </div>
                           <div className="flex flex-col gap-0 leading-tight">
-                            {dayNames.map((name) => (
-                              <span key={name} className="text-[9px] text-foreground/80 font-medium truncate">
-                                {name}
-                              </span>
-                            ))}
+                            {dayNames.map((name) => {
+                              const isOff = dayOffNames.has(name);
+                              return (
+                                <span
+                                  key={name}
+                                  className={`text-[9px] font-medium truncate ${isOff ? "text-red-600 line-through" : "text-foreground/80"}`}
+                                >
+                                  {name}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -175,11 +204,17 @@ export default function SchedulePage() {
                             <Moon className="w-2 h-2 text-primary flex-shrink-0" />
                           </div>
                           <div className="flex flex-col gap-0 leading-tight">
-                            {nightNames.map((name) => (
-                              <span key={name} className="text-[9px] text-foreground/80 font-medium truncate">
-                                {name}
-                              </span>
-                            ))}
+                            {nightNames.map((name) => {
+                              const isOff = dayOffNames.has(name);
+                              return (
+                                <span
+                                  key={name}
+                                  className={`text-[9px] font-medium truncate ${isOff ? "text-red-600 line-through" : "text-foreground/80"}`}
+                                >
+                                  {name}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -216,6 +251,7 @@ export default function SchedulePage() {
                     const shift = selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type && s.isWorking)
                       ?? selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type);
                     if (!shift) return null;
+                    const dayOffForDay = dayOffMap[selectedDay.date] ?? new Set<string>();
                     return (
                       <div
                         key={type}
@@ -232,10 +268,26 @@ export default function SchedulePage() {
                         </div>
                         {shift.isWorking && shift.memberNames && shift.memberNames.length > 0 && (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
-                            {shift.memberNames.map((name: string) => (
-                              <span key={name} className="text-sm text-foreground">{name}</span>
-                            ))}
+                            {shift.memberNames.map((name: string) => {
+                              const isOff = dayOffForDay.has(name);
+                              return (
+                                <span
+                                  key={name}
+                                  className={`text-sm ${isOff ? "text-red-600 line-through" : "text-foreground"}`}
+                                  title={isOff ? "Approved day off" : undefined}
+                                >
+                                  {name}
+                                </span>
+                              );
+                            })}
                           </div>
+                        )}
+                        {dayOffForDay.size > 0 && shift.isWorking && (
+                          <p className="text-xs text-red-500 mt-2">
+                            {[...dayOffForDay].filter((n) => shift.memberNames?.includes(n)).length > 0
+                              ? `${[...dayOffForDay].filter((n) => shift.memberNames?.includes(n)).length} on approved day off`
+                              : null}
+                          </p>
                         )}
                         {shift.sergeantName && (
                           <p className="text-xs text-muted-foreground mt-2">Sgt. {shift.sergeantName}</p>
