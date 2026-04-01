@@ -106,11 +106,37 @@ router.get("/shifts/:id", requireAuth, async (req, res): Promise<void> => {
 router.patch("/shifts/:id", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
   try {
     const id = parseInt(req.params.id as string);
+    const requesterId = req.session.userId!;
+    const requesterRole = req.session.role ?? "";
     const { name, sergeantId } = req.body;
 
     const updates: Record<string, unknown> = {};
-    if (name !== undefined) updates.name = name;
-    if (sergeantId !== undefined) updates.sergeantId = sergeantId || null;
+
+    if (requesterRole === "sergeant") {
+      // Sergeants may only modify the shift they currently manage
+      const [managedShift] = await db
+        .select({ id: shiftsTable.id })
+        .from(shiftsTable)
+        .where(eq(shiftsTable.sergeantId, requesterId))
+        .limit(1);
+
+      if (!managedShift || managedShift.id !== id) {
+        res.status(403).json({ message: "Sergeants can only modify their own managed shift" });
+        return;
+      }
+
+      // Sergeants can only update the sergeant assignment — not rename the shift
+      if (sergeantId !== undefined) updates.sergeantId = sergeantId || null;
+    } else {
+      // Admin: full update allowed
+      if (name !== undefined) updates.name = name;
+      if (sergeantId !== undefined) updates.sergeantId = sergeantId || null;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ message: "No valid fields to update" });
+      return;
+    }
 
     const [shift] = await db
       .update(shiftsTable)

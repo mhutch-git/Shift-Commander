@@ -166,11 +166,38 @@ router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> =>
 
 router.get("/day-off-requests/:id", requireAuth, async (req, res): Promise<void> => {
   try {
-    const request = await getRequestWithDetails(parseInt(req.params.id as string));
+    const id = parseInt(req.params.id as string);
+    const requesterId = req.session.userId!;
+    const requesterRole = req.session.role ?? "";
+
+    const request = await getRequestWithDetails(id);
     if (!request) {
       res.status(404).json({ message: "Request not found" });
       return;
     }
+
+    // Role-based access control on the detail endpoint
+    if (requesterRole === "deputy") {
+      // Deputies can only view their own requests
+      if (request.userId !== requesterId) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+    } else if (requesterRole === "sergeant") {
+      // Sergeants can only view requests from their own shift's personnel
+      const [sergeantShift] = await db
+        .select({ id: shiftsTable.id })
+        .from(shiftsTable)
+        .where(eq(shiftsTable.sergeantId, requesterId))
+        .limit(1);
+
+      if (!sergeantShift || request.requesterShiftId !== sergeantShift.id) {
+        res.status(403).json({ message: "Access denied" });
+        return;
+      }
+    }
+    // Admin: unrestricted
+
     res.json(request);
   } catch (err) {
     req.log.error(err);
