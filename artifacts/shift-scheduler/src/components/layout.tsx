@@ -15,7 +15,8 @@ import {
   SidebarTrigger,
   useSidebar
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Calendar, Shield, CalendarOff, Bell, Users, LogOut, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Calendar, Shield, CalendarOff, Bell, Users, LogOut } from "lucide-react";
+import badgeLogo from "@assets/INDIANA_SHERIFF_BADGE_PUTNAM_COUNTY_VECTOR_FILE_1775047938490.png";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
@@ -32,9 +33,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <Sidebar className="border-sidebar-border shadow-md">
           <SidebarHeader className="border-b border-sidebar-border pb-4 pt-6 px-4">
             <div className="flex items-center gap-3">
-              <div className="bg-primary/20 p-2 rounded-md border border-primary/30">
-                <ShieldAlert className="w-6 h-6 text-sidebar-primary-foreground" />
-              </div>
+              <img
+                src={badgeLogo}
+                alt="Putnam County Sheriff Badge"
+                className="w-10 h-10 object-contain"
+                style={{ filter: "brightness(0) invert(1)" }}
+              />
               <div className="flex flex-col">
                 <span className="font-bold text-sidebar-foreground uppercase tracking-wider text-sm">Putnam County</span>
                 <span className="text-xs text-sidebar-foreground/70 uppercase tracking-widest">Sheriff's Dept</span>
@@ -133,7 +137,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <header className="h-14 border-b border-border bg-card flex items-center px-4 md:hidden shadow-sm z-10 sticky top-0">
             <SidebarTrigger />
             <div className="ml-3 font-semibold text-foreground flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-primary" />
+              <img
+                src={badgeLogo}
+                alt="Putnam County Sheriff Badge"
+                className="w-5 h-5 object-contain"
+              />
               <span className="uppercase tracking-wider text-sm">Putnam County Sheriff</span>
             </div>
           </header>

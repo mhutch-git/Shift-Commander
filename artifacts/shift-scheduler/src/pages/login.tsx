@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ShieldAlert, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
+import badgeLogo from "@assets/INDIANA_SHERIFF_BADGE_PUTNAM_COUNTY_VECTOR_FILE_1775047938490.png";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
@@ -46,9 +47,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-primary rounded-full p-3 shadow-lg">
-              <ShieldAlert className="w-10 h-10 text-primary-foreground" />
-            </div>
+            <img
+              src={badgeLogo}
+              alt="Putnam County Sheriff Badge"
+              className="w-24 h-24 object-contain drop-shadow-lg"
+            />
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground uppercase tracking-wider">Putnam County</h1>
