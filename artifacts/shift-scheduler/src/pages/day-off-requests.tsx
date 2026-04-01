@@ -309,17 +309,15 @@ export default function DayOffRequestsPage() {
                                   : <span className="text-muted-foreground/50">Self</span>}
                               </td>
                               <td className="py-2.5">
-                                {req.status === "pending" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                    onClick={() => setDeleteConfirmId(req.id)}
-                                    data-testid={`btn-delete-request-${req.id}`}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  onClick={() => setDeleteConfirmId(req.id)}
+                                  data-testid={`btn-delete-request-${req.id}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                               </td>
                             </tr>
                           ))

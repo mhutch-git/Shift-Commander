@@ -416,21 +416,13 @@ router.delete("/day-off-requests/:id", requireAuth, async (req, res): Promise<vo
     }
 
     if (requesterRole === "deputy") {
-      // Deputies can only delete their own pending requests
+      // Deputies can only delete their own requests
       if (existing.userId !== requesterId) {
         res.status(403).json({ message: "Forbidden" });
         return;
       }
-      if (existing.status !== "pending") {
-        res.status(400).json({ message: "Only pending requests can be deleted" });
-        return;
-      }
     } else if (requesterRole === "sergeant") {
-      // Sergeants can only delete pending requests from their own managed shift
-      if (existing.status !== "pending") {
-        res.status(400).json({ message: "Only pending requests can be deleted" });
-        return;
-      }
+      // Sergeants can delete any request from their own managed shift
       const [sergeantShift] = await db
         .select({ id: shiftsTable.id })
         .from(shiftsTable)
