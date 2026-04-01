@@ -36,8 +36,16 @@ router.get("/shift-assignments", requireAuth, async (req, res): Promise<void> =>
       .innerJoin(usersTable, eq(shiftAssignmentsTable.userId, usersTable.id));
 
     const conditions = [];
-    if (shiftId) conditions.push(eq(shiftAssignmentsTable.shiftId, parseInt(shiftId as string)));
-    if (userId) conditions.push(eq(shiftAssignmentsTable.userId, parseInt(userId as string)));
+    if (shiftId) {
+      const parsedShift = parseInt(shiftId as string);
+      if (isNaN(parsedShift)) { res.status(400).json({ message: "Invalid shiftId" }); return; }
+      conditions.push(eq(shiftAssignmentsTable.shiftId, parsedShift));
+    }
+    if (userId) {
+      const parsedUser = parseInt(userId as string);
+      if (isNaN(parsedUser)) { res.status(400).json({ message: "Invalid userId" }); return; }
+      conditions.push(eq(shiftAssignmentsTable.userId, parsedUser));
+    }
 
     const assignments = conditions.length > 0
       ? await query.where(and(...conditions))

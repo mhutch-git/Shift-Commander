@@ -69,6 +69,11 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// In production ALLOWED_ORIGINS must be set — fail hard so misconfiguration is immediately visible.
+if (process.env.NODE_ENV === "production" && !ALLOWED_ORIGINS_ENV) {
+  throw new Error("ALLOWED_ORIGINS environment variable is required in production");
+}
+
 // Session secret: require it in production; generate a random one in development (sessions won't survive restarts)
 let sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
