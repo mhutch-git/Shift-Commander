@@ -10,7 +10,7 @@ export interface HealthStatus {
 }
 
 export interface ErrorResponse {
-  error: string;
+  message: string;
 }
 
 export interface MessageResponse {
@@ -153,6 +153,7 @@ export interface ShiftWithRoster {
 }
 
 export interface UpdateShiftBody {
+  name?: string;
   /** @nullable */
   sergeantId?: number | null;
 }
@@ -161,10 +162,11 @@ export interface ShiftAssignment {
   id: number;
   userId: number;
   shiftId: number;
+  effectiveDate?: string;
   firstName: string;
   lastName: string;
+  email: string;
   role: string;
-  shiftName: string;
   createdAt: string;
 }
 

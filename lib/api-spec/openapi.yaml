@@ -613,10 +613,10 @@ components:
     ErrorResponse:
       type: object
       properties:
-        error:
+        message:
           type: string
       required:
-        - error
+        - message
 
     MessageResponse:
       type: object
@@ -813,6 +813,8 @@ components:
     UpdateShiftBody:
       type: object
       properties:
+        name:
+          type: string
         sergeantId:
           type: ["integer", "null"]
 
@@ -825,13 +827,15 @@ components:
           type: integer
         shiftId:
           type: integer
+        effectiveDate:
+          type: string
         firstName:
           type: string
         lastName:
           type: string
-        role:
+        email:
           type: string
-        shiftName:
+        role:
           type: string
         createdAt:
           type: string
@@ -841,8 +845,8 @@ components:
         - shiftId
         - firstName
         - lastName
+        - email
         - role
-        - shiftName
         - createdAt
 
     CreateShiftAssignmentBody:

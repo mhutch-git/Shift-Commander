@@ -5,6 +5,7 @@ import {
   useCreateUser, useUpdateUser, useDeleteUser,
   type CreateUserBodyRole, type User, type Shift,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,8 @@ const emptyForm: UserForm = {
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
 
   const [addOpen, setAddOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -116,10 +119,12 @@ export default function UsersPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Personnel Management</h1>
-          <Button onClick={openAdd} data-testid="btn-add-user">
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Personnel
-          </Button>
+          {isAdmin && (
+            <Button onClick={openAdd} data-testid="btn-add-user">
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Personnel
+            </Button>
+          )}
         </div>
 
         <Card className="border-card-border">
@@ -136,12 +141,12 @@ export default function UsersPage() {
                       <th className="pb-2 pr-4">Role</th>
                       <th className="pb-2 pr-4">Shift</th>
                       <th className="pb-2 pr-4">Status</th>
-                      <th className="pb-2">Actions</th>
+                      {isAdmin && <th className="pb-2">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {users?.length === 0 ? (
-                      <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No personnel found</td></tr>
+                      <tr><td colSpan={isAdmin ? 6 : 5} className="py-6 text-center text-muted-foreground">No personnel found</td></tr>
                     ) : (
                       users?.map((u) => (
                         <tr key={u.id} className="hover:bg-muted/30 transition-colors" data-testid={`user-row-${u.id}`}>
@@ -154,26 +159,28 @@ export default function UsersPage() {
                               {u.isActive ? "Active" : "Inactive"}
                             </span>
                           </td>
-                          <td className="py-2.5">
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openEdit(u)}
-                                data-testid={`btn-edit-user-${u.id}`}
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleToggleActive(u)}
-                                data-testid={`btn-toggle-active-${u.id}`}
-                              >
-                                {u.isActive ? "Deactivate" : "Activate"}
-                              </Button>
-                            </div>
-                          </td>
+                          {isAdmin && (
+                            <td className="py-2.5">
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openEdit(u)}
+                                  data-testid={`btn-edit-user-${u.id}`}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleToggleActive(u)}
+                                  data-testid={`btn-toggle-active-${u.id}`}
+                                >
+                                  {u.isActive ? "Deactivate" : "Activate"}
+                                </Button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}

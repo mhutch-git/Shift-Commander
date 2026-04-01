@@ -198,6 +198,7 @@ export const UpdateShiftParams = zod.object({
 });
 
 export const UpdateShiftBody = zod.object({
+  name: zod.string().optional(),
   sergeantId: zod.number().nullish(),
 });
 
@@ -222,10 +223,11 @@ export const ListShiftAssignmentsResponseItem = zod.object({
   id: zod.number(),
   userId: zod.number(),
   shiftId: zod.number(),
+  effectiveDate: zod.string().optional(),
   firstName: zod.string(),
   lastName: zod.string(),
+  email: zod.string(),
   role: zod.string(),
-  shiftName: zod.string(),
   createdAt: zod.string(),
 });
 export const ListShiftAssignmentsResponse = zod.array(

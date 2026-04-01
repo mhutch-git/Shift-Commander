@@ -41,7 +41,9 @@ export default function ShiftDetailPage() {
   const deleteAssignment = useDeleteShiftAssignment();
   const updateShift = useUpdateShift();
 
-  const canManage = user?.role === "admin" || user?.role === "sergeant";
+  const canManage =
+    user?.role === "admin" ||
+    (user?.role === "sergeant" && shift.data?.sergeantId === user?.id);
 
   const assignedUserIds = new Set(shift.data?.members?.map((m: ShiftMember) => m.userId));
 
