@@ -1,8 +1,19 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, shiftsTable } from "@workspace/db";
+import { db, usersTable, shiftsTable, shiftAssignmentsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
+
+async function syncShiftAssignment(userId: number, shiftId: number | null, effectiveDate?: string): Promise<void> {
+  await db.delete(shiftAssignmentsTable).where(eq(shiftAssignmentsTable.userId, userId));
+  if (shiftId !== null) {
+    await db.insert(shiftAssignmentsTable).values({
+      userId,
+      shiftId,
+      effectiveDate: effectiveDate ?? new Date().toISOString().split("T")[0],
+    });
+  }
+}
 
 const router = Router();
 
@@ -86,6 +97,7 @@ router.post("/users", requireRole(["admin"]), async (req, res): Promise<void> =>
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
+    const parsedShiftId = shiftId ? parseInt(shiftId) : null;
     const [user] = await db
       .insert(usersTable)
       .values({
@@ -94,10 +106,13 @@ router.post("/users", requireRole(["admin"]), async (req, res): Promise<void> =>
         firstName,
         lastName,
         role,
-        shiftId: shiftId || null,
+        shiftId: parsedShiftId,
         isActive: true,
       })
       .returning();
+
+    // Keep shift_assignments in sync — used by rosters, schedule, and dashboard
+    await syncShiftAssignment(user.id, parsedShiftId);
 
     res.status(201).json({
       id: user.id,
@@ -185,7 +200,8 @@ router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<voi
     if (firstName !== undefined) updates.firstName = firstName;
     if (lastName !== undefined) updates.lastName = lastName;
     if (role !== undefined) updates.role = role;
-    if (shiftId !== undefined) updates.shiftId = shiftId || null;
+    const newShiftId = shiftId !== undefined ? (shiftId || null) : undefined;
+    if (newShiftId !== undefined) updates.shiftId = newShiftId;
     if (isActive !== undefined) updates.isActive = isActive;
     if (password) updates.passwordHash = await bcrypt.hash(password, 12);
 
@@ -199,6 +215,12 @@ router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<voi
       res.status(404).json({ message: "User not found" });
       return;
     }
+
+    // Keep shift_assignments in sync when shiftId changes
+    if (newShiftId !== undefined) {
+      await syncShiftAssignment(id, newShiftId);
+    }
+
     res.json({
       id: user.id,
       email: user.email,
