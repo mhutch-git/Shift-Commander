@@ -125,11 +125,11 @@ export default function SchedulePage() {
                   const letter = info?.workingShiftLetter;
                   const isToday = key === today;
 
-                  const dayShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "day");
-                  const nightShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "night");
+                  const dayShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "day" && s.isWorking);
+                  const nightShift = info?.shifts?.find((s: ScheduleShift) => s.shiftType === "night" && s.isWorking);
 
-                  const dayNames = dayShift?.isWorking ? (dayShift.memberNames ?? []) : [];
-                  const nightNames = nightShift?.isWorking ? (nightShift.memberNames ?? []) : [];
+                  const dayNames = dayShift?.memberNames ?? [];
+                  const nightNames = nightShift?.memberNames ?? [];
 
                   return (
                     <button
@@ -214,7 +214,8 @@ export default function SchedulePage() {
                     { icon: Sun, label: "Day Shift", type: "day", color: "text-amber-600" },
                     { icon: Moon, label: "Night Shift", type: "night", color: "text-primary" },
                   ].map(({ icon: Icon, label, type, color }) => {
-                    const shift = selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type);
+                    const shift = selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type && s.isWorking)
+                      ?? selectedDay.shifts?.find((s: ScheduleShift) => s.shiftType === type);
                     if (!shift) return null;
                     return (
                       <div
