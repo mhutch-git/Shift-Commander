@@ -74,9 +74,9 @@ router.post("/shift-assignments", requireRole(["admin", "sergeant"]), async (req
       }
     }
 
-    // Get user info for notification
+    // Get user info for notification and response
     const [user] = await db
-      .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, shiftId: usersTable.shiftId, email: usersTable.email })
+      .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, shiftId: usersTable.shiftId, email: usersTable.email, role: usersTable.role })
       .from(usersTable)
       .where(eq(usersTable.id, parsedUserId))
       .limit(1);
@@ -132,7 +132,14 @@ router.post("/shift-assignments", requireRole(["admin", "sergeant"]), async (req
       }
     }
 
-    res.status(201).json(assignment);
+    // Return the full ShiftAssignment shape including user fields (as per OpenAPI spec)
+    res.status(201).json({
+      ...assignment,
+      firstName: user?.firstName ?? null,
+      lastName: user?.lastName ?? null,
+      email: user?.email ?? null,
+      role: user?.role ?? null,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ message: "Internal server error" });
