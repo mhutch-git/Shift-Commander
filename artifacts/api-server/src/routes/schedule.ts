@@ -38,10 +38,11 @@ async function fetchShiftSummaries(): Promise<ShiftSummary[]> {
     .leftJoin(usersTable, eq(shiftsTable.sergeantId, usersTable.id))
     .orderBy(shiftsTable.id);
 
-  // Batch member counts and last names in a single query
+  // Batch member counts and display names in a single query
   const memberRows = await db
     .select({
       shiftId: shiftAssignmentsTable.shiftId,
+      firstName: usersTable.firstName,
       lastName: usersTable.lastName,
     })
     .from(shiftAssignmentsTable)
@@ -51,7 +52,9 @@ async function fetchShiftSummaries(): Promise<ShiftSummary[]> {
   const membersMap = new Map<number, string[]>();
   for (const row of memberRows) {
     if (!membersMap.has(row.shiftId)) membersMap.set(row.shiftId, []);
-    membersMap.get(row.shiftId)!.push(row.lastName);
+    const initial = row.firstName ? row.firstName.charAt(0).toUpperCase() + "." : "";
+    const displayName = initial ? `${initial} ${row.lastName}` : row.lastName;
+    membersMap.get(row.shiftId)!.push(displayName);
   }
 
   return shifts.map((s) => {

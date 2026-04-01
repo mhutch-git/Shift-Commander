@@ -55,14 +55,16 @@ export default function SchedulePage() {
   // Fetch approved day-off requests for this month
   const approvedRequests = useListDayOffRequests({ status: "approved" });
 
-  // Build a map: date -> Set of last names who are on approved day off
+  // Build a map: date -> Set of display names ("A. Brown") who are on approved day off
   const dayOffMap = useMemo(() => {
     const map: Record<string, Set<string>> = {};
     for (const req of approvedRequests.data ?? []) {
       const date = req.requestedDate;
       if (date < start || date > end) continue;
       if (!map[date]) map[date] = new Set();
-      if (req.requesterLastName) map[date].add(req.requesterLastName);
+      const initial = req.requesterFirstName ? req.requesterFirstName.charAt(0).toUpperCase() + "." : "";
+      const displayName = initial ? `${initial} ${req.requesterLastName}` : req.requesterLastName;
+      if (displayName) map[date].add(displayName);
     }
     return map;
   }, [approvedRequests.data, start, end]);
