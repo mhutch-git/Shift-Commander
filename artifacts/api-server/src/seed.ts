@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
 import { db, usersTable, shiftsTable, shiftAssignmentsTable } from "@workspace/db";
 
 async function seed() {
@@ -10,6 +11,7 @@ async function seed() {
   await db.delete(shiftsTable);
 
   const hash = async (p: string) => bcrypt.hash(p, 10);
+  const today = new Date().toISOString().split("T")[0]!;
 
   // Create 4 shifts
   const [dayA, dayB, nightA, nightB] = await db
@@ -22,10 +24,10 @@ async function seed() {
     ])
     .returning();
 
-  console.log("Created shifts:", dayA.id, dayB.id, nightA.id, nightB.id);
+  console.log("Created shifts:", dayA!.id, dayB!.id, nightA!.id, nightB!.id);
 
   // Create admin
-  const [admin] = await db
+  await db
     .insert(usersTable)
     .values({
       email: "admin@putnamcounty.gov",
@@ -35,15 +37,14 @@ async function seed() {
       role: "admin",
       shiftId: null,
       isActive: true,
-    })
-    .returning();
+    });
 
   // Create sergeants for each shift
   const sergeantData = [
-    { email: "sgt.jones@putnamcounty.gov", firstName: "Robert", lastName: "Jones", shiftId: dayA.id },
-    { email: "sgt.miller@putnamcounty.gov", firstName: "Patricia", lastName: "Miller", shiftId: dayB.id },
-    { email: "sgt.davis@putnamcounty.gov", firstName: "James", lastName: "Davis", shiftId: nightA.id },
-    { email: "sgt.wilson@putnamcounty.gov", firstName: "Linda", lastName: "Wilson", shiftId: nightB.id },
+    { email: "sgt.jones@putnamcounty.gov", firstName: "Robert", lastName: "Jones", shiftId: dayA!.id },
+    { email: "sgt.miller@putnamcounty.gov", firstName: "Patricia", lastName: "Miller", shiftId: dayB!.id },
+    { email: "sgt.davis@putnamcounty.gov", firstName: "James", lastName: "Davis", shiftId: nightA!.id },
+    { email: "sgt.wilson@putnamcounty.gov", firstName: "Linda", lastName: "Wilson", shiftId: nightB!.id },
   ];
 
   const sergeants = await db
@@ -64,40 +65,37 @@ async function seed() {
     .returning();
 
   // Link sergeants to their shifts
-  await db.update(shiftsTable).set({ sergeantId: sergeants[0].id }).where(shiftsTable.id === dayA.id);
-
-  const { eq } = await import("drizzle-orm");
-  await db.update(shiftsTable).set({ sergeantId: sergeants[0].id }).where(eq(shiftsTable.id, dayA.id));
-  await db.update(shiftsTable).set({ sergeantId: sergeants[1].id }).where(eq(shiftsTable.id, dayB.id));
-  await db.update(shiftsTable).set({ sergeantId: sergeants[2].id }).where(eq(shiftsTable.id, nightA.id));
-  await db.update(shiftsTable).set({ sergeantId: sergeants[3].id }).where(eq(shiftsTable.id, nightB.id));
+  await db.update(shiftsTable).set({ sergeantId: sergeants[0]!.id }).where(eq(shiftsTable.id, dayA!.id));
+  await db.update(shiftsTable).set({ sergeantId: sergeants[1]!.id }).where(eq(shiftsTable.id, dayB!.id));
+  await db.update(shiftsTable).set({ sergeantId: sergeants[2]!.id }).where(eq(shiftsTable.id, nightA!.id));
+  await db.update(shiftsTable).set({ sergeantId: sergeants[3]!.id }).where(eq(shiftsTable.id, nightB!.id));
 
   // Create deputies (5 per shift)
   const deputyData = [
     // Day A deputies
-    { first: "Michael", last: "Brown", email: "dep.brown@putnamcounty.gov", shiftId: dayA.id },
-    { first: "Jennifer", last: "Taylor", email: "dep.taylor@putnamcounty.gov", shiftId: dayA.id },
-    { first: "Charles", last: "Anderson", email: "dep.anderson@putnamcounty.gov", shiftId: dayA.id },
-    { first: "Susan", last: "Thomas", email: "dep.thomas@putnamcounty.gov", shiftId: dayA.id },
-    { first: "Daniel", last: "Jackson", email: "dep.jackson@putnamcounty.gov", shiftId: dayA.id },
+    { first: "Michael", last: "Brown", email: "dep.brown@putnamcounty.gov", shiftId: dayA!.id },
+    { first: "Jennifer", last: "Taylor", email: "dep.taylor@putnamcounty.gov", shiftId: dayA!.id },
+    { first: "Charles", last: "Anderson", email: "dep.anderson@putnamcounty.gov", shiftId: dayA!.id },
+    { first: "Susan", last: "Thomas", email: "dep.thomas@putnamcounty.gov", shiftId: dayA!.id },
+    { first: "Daniel", last: "Jackson", email: "dep.jackson@putnamcounty.gov", shiftId: dayA!.id },
     // Day B deputies
-    { first: "Matthew", last: "White", email: "dep.white@putnamcounty.gov", shiftId: dayB.id },
-    { first: "Karen", last: "Harris", email: "dep.harris@putnamcounty.gov", shiftId: dayB.id },
-    { first: "Anthony", last: "Martin", email: "dep.martin@putnamcounty.gov", shiftId: dayB.id },
-    { first: "Lisa", last: "Thompson", email: "dep.thompson@putnamcounty.gov", shiftId: dayB.id },
-    { first: "Mark", last: "Garcia", email: "dep.garcia@putnamcounty.gov", shiftId: dayB.id },
+    { first: "Matthew", last: "White", email: "dep.white@putnamcounty.gov", shiftId: dayB!.id },
+    { first: "Karen", last: "Harris", email: "dep.harris@putnamcounty.gov", shiftId: dayB!.id },
+    { first: "Anthony", last: "Martin", email: "dep.martin@putnamcounty.gov", shiftId: dayB!.id },
+    { first: "Lisa", last: "Thompson", email: "dep.thompson@putnamcounty.gov", shiftId: dayB!.id },
+    { first: "Mark", last: "Garcia", email: "dep.garcia@putnamcounty.gov", shiftId: dayB!.id },
     // Night A deputies
-    { first: "Donald", last: "Martinez", email: "dep.martinez@putnamcounty.gov", shiftId: nightA.id },
-    { first: "Betty", last: "Robinson", email: "dep.robinson@putnamcounty.gov", shiftId: nightA.id },
-    { first: "Paul", last: "Clark", email: "dep.clark@putnamcounty.gov", shiftId: nightA.id },
-    { first: "Sandra", last: "Rodriguez", email: "dep.rodriguez@putnamcounty.gov", shiftId: nightA.id },
-    { first: "Steven", last: "Lewis", email: "dep.lewis@putnamcounty.gov", shiftId: nightA.id },
+    { first: "Donald", last: "Martinez", email: "dep.martinez@putnamcounty.gov", shiftId: nightA!.id },
+    { first: "Betty", last: "Robinson", email: "dep.robinson@putnamcounty.gov", shiftId: nightA!.id },
+    { first: "Paul", last: "Clark", email: "dep.clark@putnamcounty.gov", shiftId: nightA!.id },
+    { first: "Sandra", last: "Rodriguez", email: "dep.rodriguez@putnamcounty.gov", shiftId: nightA!.id },
+    { first: "Steven", last: "Lewis", email: "dep.lewis@putnamcounty.gov", shiftId: nightA!.id },
     // Night B deputies
-    { first: "Edward", last: "Lee", email: "dep.lee@putnamcounty.gov", shiftId: nightB.id },
-    { first: "Donna", last: "Walker", email: "dep.walker@putnamcounty.gov", shiftId: nightB.id },
-    { first: "Kevin", last: "Hall", email: "dep.hall@putnamcounty.gov", shiftId: nightB.id },
-    { first: "Helen", last: "Allen", email: "dep.allen@putnamcounty.gov", shiftId: nightB.id },
-    { first: "Brian", last: "Young", email: "dep.young@putnamcounty.gov", shiftId: nightB.id },
+    { first: "Edward", last: "Lee", email: "dep.lee@putnamcounty.gov", shiftId: nightB!.id },
+    { first: "Donna", last: "Walker", email: "dep.walker@putnamcounty.gov", shiftId: nightB!.id },
+    { first: "Kevin", last: "Hall", email: "dep.hall@putnamcounty.gov", shiftId: nightB!.id },
+    { first: "Helen", last: "Allen", email: "dep.allen@putnamcounty.gov", shiftId: nightB!.id },
+    { first: "Brian", last: "Young", email: "dep.young@putnamcounty.gov", shiftId: nightB!.id },
   ];
 
   const deputies = await db
@@ -117,10 +115,10 @@ async function seed() {
     )
     .returning();
 
-  // Create shift assignments for all sergeants and deputies
+  // Create shift assignments for all sergeants and deputies (with effectiveDate)
   const allShiftMembers = [
-    ...sergeants.map((s) => ({ userId: s.id, shiftId: s.shiftId! })),
-    ...deputies.map((d) => ({ userId: d.id, shiftId: d.shiftId! })),
+    ...sergeants.map((s) => ({ userId: s.id, shiftId: s.shiftId!, effectiveDate: today })),
+    ...deputies.map((d) => ({ userId: d.id, shiftId: d.shiftId!, effectiveDate: today })),
   ];
 
   await db.insert(shiftAssignmentsTable).values(allShiftMembers);

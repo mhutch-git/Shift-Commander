@@ -40,7 +40,7 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
   try {
     const { userId, status, shiftId } = req.query;
 
-    let query = db
+    const query = db
       .select({
         id: dayOffRequestsTable.id,
         userId: dayOffRequestsTable.userId,
@@ -92,14 +92,12 @@ router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> =>
       .values({ userId, requestedDate, reason, status: "pending" })
       .returning();
 
-    // Get user info for notification
     const [user] = await db
       .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, shiftId: usersTable.shiftId })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);
 
-    // Notify the sergeant of the shift
     if (user?.shiftId) {
       const [shift] = await db
         .select({ sergeantId: shiftsTable.sergeantId })
@@ -115,7 +113,6 @@ router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> =>
           isRead: false,
         });
 
-        // Get sergeant email for email notification
         const [sergeant] = await db
           .select({ email: usersTable.email, firstName: usersTable.firstName })
           .from(usersTable)
@@ -141,7 +138,7 @@ router.post("/day-off-requests", requireAuth, async (req, res): Promise<void> =>
 
 router.get("/day-off-requests/:id", requireAuth, async (req, res): Promise<void> => {
   try {
-    const request = await getRequestWithDetails(parseInt(req.params.id));
+    const request = await getRequestWithDetails(parseInt(req.params.id as string));
     if (!request) {
       res.status(404).json({ message: "Request not found" });
       return;
@@ -153,11 +150,37 @@ router.get("/day-off-requests/:id", requireAuth, async (req, res): Promise<void>
   }
 });
 
-router.post("/day-off-requests/:id/approve", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
+// Helper: verify that a sergeant reviewer can only action requests from their own shift
+async function canReview(reviewerId: number, reviewerRole: string, requestId: number): Promise<boolean> {
+  if (reviewerRole === "admin") return true;
+
+  const request = await getRequestWithDetails(requestId);
+  if (!request) return false;
+
+  // Find which shift this reviewer is the sergeant of
+  const [reviewerShift] = await db
+    .select({ id: shiftsTable.id })
+    .from(shiftsTable)
+    .where(eq(shiftsTable.sergeantId, reviewerId))
+    .limit(1);
+
+  if (!reviewerShift) return false;
+
+  return request.requesterShiftId === reviewerShift.id;
+}
+
+// PATCH — aligns with OpenAPI spec
+router.patch("/day-off-requests/:id/approve", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { notes } = req.body;
     const reviewerId = req.session.userId!;
+    const reviewerRole = req.session.role!;
+
+    if (!await canReview(reviewerId, reviewerRole, id)) {
+      res.status(403).json({ message: "You can only review requests from your own shift" });
+      return;
+    }
 
     const [request] = await db
       .update(dayOffRequestsTable)
@@ -167,15 +190,14 @@ router.post("/day-off-requests/:id/approve", requireRole(["admin", "sergeant"]),
         reviewNotes: notes || null,
         reviewedAt: new Date(),
       })
-      .where(eq(dayOffRequestsTable.id, id))
+      .where(and(eq(dayOffRequestsTable.id, id), eq(dayOffRequestsTable.status, "pending")))
       .returning();
 
     if (!request) {
-      res.status(404).json({ message: "Request not found" });
+      res.status(404).json({ message: "Request not found or already reviewed" });
       return;
     }
 
-    // Notify requester
     await db.insert(notificationLogsTable).values({
       recipientId: request.userId,
       type: "day_off_approved",
@@ -183,7 +205,6 @@ router.post("/day-off-requests/:id/approve", requireRole(["admin", "sergeant"]),
       isRead: false,
     });
 
-    // Email requester
     const [requester] = await db
       .select({ email: usersTable.email, firstName: usersTable.firstName })
       .from(usersTable)
@@ -205,11 +226,18 @@ router.post("/day-off-requests/:id/approve", requireRole(["admin", "sergeant"]),
   }
 });
 
-router.post("/day-off-requests/:id/deny", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
+// PATCH — aligns with OpenAPI spec
+router.patch("/day-off-requests/:id/deny", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { notes } = req.body;
     const reviewerId = req.session.userId!;
+    const reviewerRole = req.session.role!;
+
+    if (!await canReview(reviewerId, reviewerRole, id)) {
+      res.status(403).json({ message: "You can only review requests from your own shift" });
+      return;
+    }
 
     const [request] = await db
       .update(dayOffRequestsTable)
@@ -219,15 +247,14 @@ router.post("/day-off-requests/:id/deny", requireRole(["admin", "sergeant"]), as
         reviewNotes: notes || null,
         reviewedAt: new Date(),
       })
-      .where(eq(dayOffRequestsTable.id, id))
+      .where(and(eq(dayOffRequestsTable.id, id), eq(dayOffRequestsTable.status, "pending")))
       .returning();
 
     if (!request) {
-      res.status(404).json({ message: "Request not found" });
+      res.status(404).json({ message: "Request not found or already reviewed" });
       return;
     }
 
-    // Notify requester
     await db.insert(notificationLogsTable).values({
       recipientId: request.userId,
       type: "day_off_denied",
@@ -235,7 +262,6 @@ router.post("/day-off-requests/:id/deny", requireRole(["admin", "sergeant"]), as
       isRead: false,
     });
 
-    // Email requester
     const [requester] = await db
       .select({ email: usersTable.email, firstName: usersTable.firstName })
       .from(usersTable)

@@ -282,43 +282,28 @@ export const GetScheduleResponse = zod.array(GetScheduleResponseItem);
  */
 export const GetTodayScheduleResponse = zod.object({
   date: zod.string(),
+  dayOfWeek: zod.string(),
   workingShiftLetter: zod.string(),
-  dayShift: zod.object({
-    id: zod.number(),
-    name: zod.string(),
-    shiftType: zod.enum(["day", "night"]),
-    shiftLetter: zod.enum(["a", "b"]),
-    sergeantId: zod.number().nullish(),
-    sergeantName: zod.string().nullish(),
-    members: zod.array(
-      zod.object({
-        id: zod.number(),
-        userId: zod.number(),
-        firstName: zod.string(),
-        lastName: zod.string(),
-        role: zod.string(),
-        email: zod.string(),
-      }),
-    ),
-  }),
-  nightShift: zod.object({
-    id: zod.number(),
-    name: zod.string(),
-    shiftType: zod.enum(["day", "night"]),
-    shiftLetter: zod.enum(["a", "b"]),
-    sergeantId: zod.number().nullish(),
-    sergeantName: zod.string().nullish(),
-    members: zod.array(
-      zod.object({
-        id: zod.number(),
-        userId: zod.number(),
-        firstName: zod.string(),
-        lastName: zod.string(),
-        role: zod.string(),
-        email: zod.string(),
-      }),
-    ),
-  }),
+  workingShifts: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      shiftType: zod.string(),
+      shiftLetter: zod.string(),
+      memberCount: zod.number(),
+      sergeantId: zod.number().nullish(),
+    }),
+  ),
+  offShifts: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      shiftType: zod.string(),
+      shiftLetter: zod.string(),
+      memberCount: zod.number(),
+      sergeantId: zod.number().nullish(),
+    }),
+  ),
 });
 
 /**
@@ -390,7 +375,7 @@ export const ApproveDayOffRequestParams = zod.object({
 });
 
 export const ApproveDayOffRequestBody = zod.object({
-  reviewNotes: zod.string().optional(),
+  notes: zod.string().optional(),
 });
 
 export const ApproveDayOffRequestResponse = zod.object({
@@ -418,7 +403,7 @@ export const DenyDayOffRequestParams = zod.object({
 });
 
 export const DenyDayOffRequestBody = zod.object({
-  reviewNotes: zod.string().optional(),
+  notes: zod.string().optional(),
 });
 
 export const DenyDayOffRequestResponse = zod.object({

@@ -6,6 +6,7 @@ import ConnectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { randomBytes } from "crypto";
 
 const PgSession = ConnectPgSimple(session);
 
@@ -33,15 +34,47 @@ app.use(
   }),
 );
 
+// Determine allowed origins — prefer explicit env var, otherwise allow *.replit.dev patterns
+const ALLOWED_ORIGINS_ENV = process.env.ALLOWED_ORIGINS;
+const allowedOrigins: string[] = ALLOWED_ORIGINS_ENV
+  ? ALLOWED_ORIGINS_ENV.split(",").map((s) => s.trim())
+  : [];
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return false;
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow any replit.dev subdomain (covers dev and published environments)
+  if (/^https:\/\/[a-z0-9-]+\.(janeway\.replit\.dev|replit\.app)$/i.test(origin)) return true;
+  // Allow localhost in development
+  if (process.env.NODE_ENV !== "production" && /^http:\/\/localhost(:\d+)?$/.test(origin)) return true;
+  return false;
+}
+
 app.use(
   cors({
-    origin: (origin, callback) => callback(null, origin || "*"),
+    origin: (origin, callback) => {
+      if (!origin || isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      }
+    },
     credentials: true,
   })
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session secret: require it in production; generate a random one in development (sessions won't survive restarts)
+let sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET environment variable is required in production");
+  }
+  sessionSecret = randomBytes(32).toString("hex");
+  logger.warn("SESSION_SECRET not set — using a random secret. Sessions will be lost on server restart.");
+}
 
 app.use(
   session({
@@ -50,7 +83,7 @@ app.use(
       tableName: "session",
       createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || "putnam-sheriff-shift-secret-2026",
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {

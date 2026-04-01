@@ -14,7 +14,7 @@ export function requireRole(roles: string[]) {
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
-    if (!roles.includes(req.session.role)) {
+    if (!roles.includes(req.session.role ?? "")) {
       res.status(403).json({ message: "Forbidden" });
       return;
     }

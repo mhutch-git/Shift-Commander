@@ -906,17 +906,46 @@ components:
       properties:
         date:
           type: string
+        dayOfWeek:
+          type: string
         workingShiftLetter:
           type: string
-        dayShift:
-          $ref: "#/components/schemas/ShiftWithRoster"
-        nightShift:
-          $ref: "#/components/schemas/ShiftWithRoster"
+        workingShifts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleShiftWithCount"
+        offShifts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleShiftWithCount"
       required:
         - date
+        - dayOfWeek
         - workingShiftLetter
-        - dayShift
-        - nightShift
+        - workingShifts
+        - offShifts
+
+    ScheduleShiftWithCount:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        shiftType:
+          type: string
+        shiftLetter:
+          type: string
+        memberCount:
+          type: integer
+        sergeantId:
+          type: ["integer", "null"]
+      required:
+        - id
+        - name
+        - shiftType
+        - shiftLetter
+        - memberCount
 
     DayOffRequest:
       type: object
@@ -974,7 +1003,7 @@ components:
     ReviewRequestBody:
       type: object
       properties:
-        reviewNotes:
+        notes:
           type: string
 
     DashboardSummary:

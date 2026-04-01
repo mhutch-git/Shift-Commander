@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, timestamp, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -6,6 +6,7 @@ export const shiftAssignmentsTable = pgTable("shift_assignments", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   shiftId: integer("shift_id").notNull(),
+  effectiveDate: date("effective_date").notNull().$default(() => new Date().toISOString().split("T")[0]!),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

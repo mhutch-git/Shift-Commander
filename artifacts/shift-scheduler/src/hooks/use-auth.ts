@@ -1,4 +1,5 @@
 import { useGetMe, getGetMeQueryKey, useLogin as useApiLogin, useLogout as useApiLogout, LoginBody } from "@workspace/api-client-react";
+import type { UseQueryOptions } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 
@@ -8,8 +9,9 @@ export function useAuth() {
 
   const { data: user, isLoading, error } = useGetMe({
     query: {
+      queryKey: getGetMeQueryKey(),
       retry: false,
-    }
+    } as UseQueryOptions<any, any, any, any>
   });
 
   const loginMutation = useApiLogin();

@@ -23,7 +23,8 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   const form = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(loginSchema as any),
     defaultValues: { email: "", password: "" },
   });
 

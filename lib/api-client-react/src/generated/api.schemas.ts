@@ -199,11 +199,22 @@ export interface ScheduleDay {
   shifts: ScheduleShift[];
 }
 
+export interface ScheduleShiftWithCount {
+  id: number;
+  name: string;
+  shiftType: string;
+  shiftLetter: string;
+  memberCount: number;
+  /** @nullable */
+  sergeantId?: number | null;
+}
+
 export interface TodaySchedule {
   date: string;
+  dayOfWeek: string;
   workingShiftLetter: string;
-  dayShift: ShiftWithRoster;
-  nightShift: ShiftWithRoster;
+  workingShifts: ScheduleShiftWithCount[];
+  offShifts: ScheduleShiftWithCount[];
 }
 
 export type DayOffRequestStatus =
@@ -244,7 +255,7 @@ export interface CreateDayOffRequestBody {
 }
 
 export interface ReviewRequestBody {
-  reviewNotes?: string;
+  notes?: string;
 }
 
 export interface ShiftCount {

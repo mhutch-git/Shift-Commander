@@ -57,7 +57,7 @@ router.get("/shifts", requireAuth, async (req, res): Promise<void> => {
 
 router.get("/shifts/:id", requireAuth, async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const [shift] = await db.select().from(shiftsTable).where(eq(shiftsTable.id, id)).limit(1);
 
     if (!shift) {
@@ -103,9 +103,9 @@ router.get("/shifts/:id", requireAuth, async (req, res): Promise<void> => {
   }
 });
 
-router.put("/shifts/:id", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
+router.patch("/shifts/:id", requireRole(["admin", "sergeant"]), async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { name, sergeantId } = req.body;
 
     const updates: Record<string, unknown> = {};

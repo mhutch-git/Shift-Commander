@@ -22,8 +22,8 @@ router.get("/notifications", requireAuth, async (req, res): Promise<void> => {
   }
 });
 
-// read-all MUST come before :id/read to avoid "read-all" matching as an id
-router.put("/notifications/read-all", requireAuth, async (req, res): Promise<void> => {
+// PATCH read-all MUST come before PATCH :id/read to avoid "read-all" matching as an id
+router.patch("/notifications/read-all", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.session.userId!;
     await db
@@ -38,9 +38,9 @@ router.put("/notifications/read-all", requireAuth, async (req, res): Promise<voi
   }
 });
 
-router.put("/notifications/:id/read", requireAuth, async (req, res): Promise<void> => {
+router.patch("/notifications/:id/read", requireAuth, async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const userId = req.session.userId!;
 
     const [notification] = await db

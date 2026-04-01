@@ -3,6 +3,7 @@ import {
   useListUsers, getListUsersQueryKey,
   useListShifts,
   useCreateUser, useUpdateUser, useDeleteUser,
+  type CreateUserBodyRole,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
@@ -70,7 +71,7 @@ export default function UsersPage() {
     try {
       await createUser.mutateAsync({ data: {
         email: form.email, password: form.password, firstName: form.firstName,
-        lastName: form.lastName, role: form.role,
+        lastName: form.lastName, role: form.role as CreateUserBodyRole,
         shiftId: form.shiftId ? parseInt(form.shiftId) : undefined,
       }});
       queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });

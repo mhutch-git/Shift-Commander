@@ -74,7 +74,7 @@ router.post("/users", requireRole(["admin"]), async (req, res): Promise<void> =>
 
 router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const [user] = await db
       .select({
         id: usersTable.id,
@@ -102,9 +102,9 @@ router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
   }
 });
 
-router.put("/users/:id", requireRole(["admin"]), async (req, res): Promise<void> => {
+router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { firstName, lastName, role, shiftId, isActive, password } = req.body;
 
     const updates: Record<string, unknown> = {};
@@ -142,7 +142,7 @@ router.put("/users/:id", requireRole(["admin"]), async (req, res): Promise<void>
 
 router.delete("/users/:id", requireRole(["admin"]), async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     await db.delete(usersTable).where(eq(usersTable.id, id));
     res.json({ message: "User deleted" });
   } catch (err) {
