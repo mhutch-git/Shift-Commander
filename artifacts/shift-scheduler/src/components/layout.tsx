@@ -81,6 +81,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  {(user?.role === "admin" || user?.role === "sergeant") && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={location === "/assign-to-shift"}>
+                        <Link href="/assign-to-shift" data-testid="nav-assign">
+                          <UserPlus />
+                          <span>Assign to Shift</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={location === "/notifications"}>
                       <Link href="/notifications" data-testid="nav-notifications">
@@ -94,17 +104,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  
-                  {(user?.role === "admin" || user?.role === "sergeant") && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={location === "/assign-to-shift"}>
-                        <Link href="/assign-to-shift" data-testid="nav-assign">
-                          <UserPlus />
-                          <span>Assign to Shift</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
 
                   {user?.role === "admin" && (
                     <SidebarMenuItem className="mt-4 pt-4 border-t border-sidebar-border/50">
