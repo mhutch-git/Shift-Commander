@@ -338,4 +338,54 @@ router.patch("/day-off-requests/:id/deny", requireRole(["admin", "sergeant"]), a
   }
 });
 
+// Deputy can delete their own pending request; admin can delete any
+router.delete("/day-off-requests/:id", requireAuth, async (req, res): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) {
+      res.status(400).json({ message: "Invalid request id" });
+      return;
+    }
+
+    const requesterId = req.session.userId!;
+    const requesterRole = req.session.role ?? "";
+
+    const [existing] = await db
+      .select()
+      .from(dayOffRequestsTable)
+      .where(eq(dayOffRequestsTable.id, id))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ message: "Request not found" });
+      return;
+    }
+
+    // Deputies can only delete their own pending requests
+    if (requesterRole === "deputy") {
+      if (existing.userId !== requesterId) {
+        res.status(403).json({ message: "Forbidden" });
+        return;
+      }
+      if (existing.status !== "pending") {
+        res.status(400).json({ message: "Only pending requests can be deleted" });
+        return;
+      }
+    }
+    // Sergeants can delete pending requests from their shift
+    if (requesterRole === "sergeant") {
+      if (existing.status !== "pending") {
+        res.status(400).json({ message: "Only pending requests can be deleted" });
+        return;
+      }
+    }
+
+    await db.delete(dayOffRequestsTable).where(eq(dayOffRequestsTable.id, id));
+    res.json({ message: "Request deleted" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;

@@ -230,6 +230,29 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ShiftWithRoster"
+    post:
+      operationId: createShift
+      tags: [shifts]
+      summary: Create a new shift (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShiftBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shift"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /shifts/{id}:
     get:
@@ -278,6 +301,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Shift"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteShift
+      tags: [shifts]
+      summary: Delete a shift and unassign all personnel (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
         "404":
           description: Not found
           content:
@@ -477,6 +523,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDayOffRequest
+      tags: [dayOffRequests]
+      summary: Delete a day off request (pending only; deputy=own, sergeant/admin=any)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /day-off-requests/{id}/approve:
     patch:
@@ -619,6 +694,32 @@ components:
           type: string
       required:
         - message
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    CreateShiftBody:
+      type: object
+      properties:
+        name:
+          type: string
+        shiftType:
+          type: string
+          enum: [day, night]
+        shiftLetter:
+          type: string
+          enum: [a, b]
+        sergeantId:
+          type: ["integer", "null"]
+      required:
+        - name
+        - shiftType
+        - shiftLetter
 
     MessageResponse:
       type: object

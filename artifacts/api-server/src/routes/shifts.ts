@@ -155,4 +155,51 @@ router.patch("/shifts/:id", requireRole(["admin", "sergeant"]), async (req, res)
   }
 });
 
+router.post("/shifts", requireRole(["admin"]), async (req, res): Promise<void> => {
+  try {
+    const { name, shiftType, shiftLetter, sergeantId } = req.body;
+    if (!name || !shiftType || !shiftLetter) {
+      res.status(400).json({ message: "name, shiftType, and shiftLetter are required" });
+      return;
+    }
+    const [shift] = await db
+      .insert(shiftsTable)
+      .values({ name, shiftType, shiftLetter, sergeantId: sergeantId || null })
+      .returning();
+    res.status(201).json({ ...shift, sergeantName: null, members: [] });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.delete("/shifts/:id", requireRole(["admin"]), async (req, res): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) {
+      res.status(400).json({ message: "Invalid shift id" });
+      return;
+    }
+
+    // Remove all shift assignments for this shift first
+    await db.delete(shiftAssignmentsTable).where(eq(shiftAssignmentsTable.shiftId, id));
+    // Clear shiftId for users assigned to this shift
+    await db.update(usersTable).set({ shiftId: null }).where(eq(usersTable.shiftId, id));
+
+    const [deleted] = await db
+      .delete(shiftsTable)
+      .where(eq(shiftsTable.id, id))
+      .returning();
+
+    if (!deleted) {
+      res.status(404).json({ message: "Shift not found" });
+      return;
+    }
+    res.json({ message: "Shift deleted" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;

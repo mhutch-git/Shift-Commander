@@ -20,6 +20,7 @@ import type {
   AuthUser,
   CreateDayOffRequestBody,
   CreateShiftAssignmentBody,
+  CreateShiftBody,
   CreateUserBody,
   DashboardSummary,
   DayOffRequest,
@@ -36,6 +37,7 @@ import type {
   Shift,
   ShiftAssignment,
   ShiftWithRoster,
+  SuccessResponse,
   TodaySchedule,
   UpdateShiftBody,
   UpdateUserBody,
@@ -831,6 +833,92 @@ export function useListShifts<
 }
 
 /**
+ * @summary Create a new shift (admin only)
+ */
+export const getCreateShiftUrl = () => {
+  return `/api/shifts`;
+};
+
+export const createShift = async (
+  createShiftBody: CreateShiftBody,
+  options?: RequestInit,
+): Promise<Shift> => {
+  return customFetch<Shift>(getCreateShiftUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createShiftBody),
+  });
+};
+
+export const getCreateShiftMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createShift>>,
+    TError,
+    { data: BodyType<CreateShiftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createShift>>,
+  TError,
+  { data: BodyType<CreateShiftBody> },
+  TContext
+> => {
+  const mutationKey = ["createShift"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createShift>>,
+    { data: BodyType<CreateShiftBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createShift(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateShiftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createShift>>
+>;
+export type CreateShiftMutationBody = BodyType<CreateShiftBody>;
+export type CreateShiftMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a new shift (admin only)
+ */
+export const useCreateShift = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createShift>>,
+    TError,
+    { data: BodyType<CreateShiftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createShift>>,
+  TError,
+  { data: BodyType<CreateShiftBody> },
+  TContext
+> => {
+  return useMutation(getCreateShiftMutationOptions(options));
+};
+
+/**
  * @summary Get shift by ID with roster
  */
 export const getGetShiftUrl = (id: number) => {
@@ -1000,6 +1088,90 @@ export const useUpdateShift = <
   TContext
 > => {
   return useMutation(getUpdateShiftMutationOptions(options));
+};
+
+/**
+ * @summary Delete a shift and unassign all personnel (admin only)
+ */
+export const getDeleteShiftUrl = (id: number) => {
+  return `/api/shifts/${id}`;
+};
+
+export const deleteShift = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteShiftUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteShiftMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteShift>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteShift>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteShift"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteShift>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteShift(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteShiftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteShift>>
+>;
+
+export type DeleteShiftMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a shift and unassign all personnel (admin only)
+ */
+export const useDeleteShift = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteShift>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteShift>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteShiftMutationOptions(options));
 };
 
 /**
@@ -1711,6 +1883,90 @@ export function useGetDayOffRequest<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Delete a day off request (pending only; deputy=own, sergeant/admin=any)
+ */
+export const getDeleteDayOffRequestUrl = (id: number) => {
+  return `/api/day-off-requests/${id}`;
+};
+
+export const deleteDayOffRequest = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteDayOffRequestUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteDayOffRequestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteDayOffRequest>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteDayOffRequest>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteDayOffRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteDayOffRequest>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteDayOffRequest(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteDayOffRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteDayOffRequest>>
+>;
+
+export type DeleteDayOffRequestMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a day off request (pending only; deputy=own, sergeant/admin=any)
+ */
+export const useDeleteDayOffRequest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteDayOffRequest>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteDayOffRequest>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteDayOffRequestMutationOptions(options));
+};
 
 /**
  * @summary Approve a day off request

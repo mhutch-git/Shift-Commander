@@ -137,7 +137,9 @@ router.post("/users", requireRole(["admin"]), async (req, res): Promise<void> =>
       lastName: user.lastName,
       role: user.role,
       shiftId: user.shiftId,
+      shiftName: null,
       isActive: user.isActive,
+      createdAt: user.createdAt,
     });
   } catch (err: unknown) {
     req.log.error(err);
@@ -190,6 +192,7 @@ router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
         shiftId: usersTable.shiftId,
         shiftName: shiftsTable.name,
         isActive: usersTable.isActive,
+        createdAt: usersTable.createdAt,
       })
       .from(usersTable)
       .leftJoin(shiftsTable, eq(usersTable.shiftId, shiftsTable.id))
@@ -302,7 +305,9 @@ router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<voi
       lastName: user.lastName,
       role: user.role,
       shiftId: user.shiftId,
+      shiftName: null,
       isActive: user.isActive,
+      createdAt: user.createdAt,
     });
   } catch (err: unknown) {
     req.log.error(err);

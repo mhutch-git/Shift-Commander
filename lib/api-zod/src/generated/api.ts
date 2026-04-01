@@ -165,6 +165,16 @@ export const ListShiftsResponseItem = zod.object({
 export const ListShiftsResponse = zod.array(ListShiftsResponseItem);
 
 /**
+ * @summary Create a new shift (admin only)
+ */
+export const CreateShiftBody = zod.object({
+  name: zod.string(),
+  shiftType: zod.enum(["day", "night"]),
+  shiftLetter: zod.enum(["a", "b"]),
+  sergeantId: zod.number().nullish(),
+});
+
+/**
  * @summary Get shift by ID with roster
  */
 export const GetShiftParams = zod.object({
@@ -209,6 +219,17 @@ export const UpdateShiftResponse = zod.object({
   shiftLetter: zod.enum(["a", "b"]),
   sergeantId: zod.number().nullish(),
   sergeantName: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete a shift and unassign all personnel (admin only)
+ */
+export const DeleteShiftParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteShiftResponse = zod.object({
+  message: zod.string(),
 });
 
 /**
@@ -377,6 +398,17 @@ export const GetDayOffRequestResponse = zod.object({
   requesterShiftName: zod.string().nullish(),
   reviewerFirstName: zod.string().nullish(),
   reviewerLastName: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete a day off request (pending only; deputy=own, sergeant/admin=any)
+ */
+export const DeleteDayOffRequestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteDayOffRequestResponse = zod.object({
+  message: zod.string(),
 });
 
 /**

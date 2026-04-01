@@ -13,6 +13,34 @@ export interface ErrorResponse {
   message: string;
 }
 
+export interface SuccessResponse {
+  message: string;
+}
+
+export type CreateShiftBodyShiftType =
+  (typeof CreateShiftBodyShiftType)[keyof typeof CreateShiftBodyShiftType];
+
+export const CreateShiftBodyShiftType = {
+  day: "day",
+  night: "night",
+} as const;
+
+export type CreateShiftBodyShiftLetter =
+  (typeof CreateShiftBodyShiftLetter)[keyof typeof CreateShiftBodyShiftLetter];
+
+export const CreateShiftBodyShiftLetter = {
+  a: "a",
+  b: "b",
+} as const;
+
+export interface CreateShiftBody {
+  name: string;
+  shiftType: CreateShiftBodyShiftType;
+  shiftLetter: CreateShiftBodyShiftLetter;
+  /** @nullable */
+  sergeantId?: number | null;
+}
+
 export interface MessageResponse {
   message: string;
 }
