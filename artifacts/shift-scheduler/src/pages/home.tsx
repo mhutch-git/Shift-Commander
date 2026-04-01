@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import {
   Sun, Moon, CalendarOff, Bell, CheckCheck, BellOff,
-  UserPlus, Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight,
+  UserPlus, Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight, Star,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -185,18 +185,18 @@ function MiniCalendar({
             <div key={d.dateStr} className={cellCls}>
               <span className={numCls}>{d.day}</span>
               {/* indicator dots */}
-              <div className="flex gap-px mt-0.5">
+              <div className="flex gap-0.5 mt-0.5">
                 {d.worksDay && !d.isPast && (
-                  <span className="w-1 h-1 rounded-full bg-amber-500" title="Day shift" />
+                  <Sun className="w-2.5 h-2.5 text-amber-500" />
                 )}
                 {d.worksNight && !d.isPast && (
-                  <span className="w-1 h-1 rounded-full bg-indigo-500" title="Night shift" />
+                  <Moon className="w-2.5 h-2.5 text-indigo-500" />
                 )}
                 {d.isDayOff && !d.isPast && (
-                  <span className="w-1 h-1 rounded-full bg-red-400" title="Day off requested" />
+                  <CalendarOff className="w-2.5 h-2.5 text-red-400" />
                 )}
                 {d.isSpecial && !d.isPast && (
-                  <span className="w-1 h-1 rounded-full bg-green-500" title="Special assignment" />
+                  <Star className="w-2.5 h-2.5 text-green-500" />
                 )}
               </div>
             </div>
@@ -207,16 +207,16 @@ function MiniCalendar({
       {/* Legend */}
       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border">
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" /> Day shift
+          <Sun className="w-3 h-3 text-amber-500 shrink-0" /> Day shift
         </span>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" /> Night shift
+          <Moon className="w-3 h-3 text-indigo-500 shrink-0" /> Night shift
         </span>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" /> Day off
+          <CalendarOff className="w-3 h-3 text-red-400 shrink-0" /> Day off
         </span>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" /> Special assignment
+          <Star className="w-3 h-3 text-green-500 shrink-0" /> Special assignment
         </span>
       </div>
     </div>
