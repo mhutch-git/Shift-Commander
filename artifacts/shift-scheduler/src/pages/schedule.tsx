@@ -153,9 +153,10 @@ export default function SchedulePage() {
                         )}
                       </span>
 
-                      {/* Day shift names */}
-                      {dayNames.length > 0 && (
-                        <div className="w-full mb-1">
+                      {/* Day (left) / Night (right) two-column layout */}
+                      <div className="flex w-full gap-0.5 flex-1">
+                        {/* Day shift — left column */}
+                        <div className="flex-1 min-w-0 border-r border-border/40 pr-0.5">
                           <div className="flex items-center gap-0.5 mb-0.5">
                             <Sun className="w-2 h-2 text-amber-500 flex-shrink-0" />
                           </div>
@@ -167,11 +168,9 @@ export default function SchedulePage() {
                             ))}
                           </div>
                         </div>
-                      )}
 
-                      {/* Night shift names */}
-                      {nightNames.length > 0 && (
-                        <div className="w-full">
+                        {/* Night shift — right column */}
+                        <div className="flex-1 min-w-0 pl-0.5">
                           <div className="flex items-center gap-0.5 mb-0.5">
                             <Moon className="w-2 h-2 text-primary flex-shrink-0" />
                           </div>
@@ -183,7 +182,7 @@ export default function SchedulePage() {
                             ))}
                           </div>
                         </div>
-                      )}
+                      </div>
                     </button>
                   );
                 })}
