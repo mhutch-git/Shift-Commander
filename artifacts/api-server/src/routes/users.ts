@@ -1,8 +1,9 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, shiftsTable, shiftAssignmentsTable } from "@workspace/db";
+import { db, usersTable, shiftsTable, shiftAssignmentsTable, notificationLogsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
+import { sendEmail } from "../lib/email";
 
 async function syncShiftAssignment(userId: number, shiftId: number | null, effectiveDate?: string): Promise<void> {
   await db.delete(shiftAssignmentsTable).where(eq(shiftAssignmentsTable.userId, userId));
@@ -216,9 +217,44 @@ router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<voi
       return;
     }
 
-    // Keep shift_assignments in sync when shiftId changes
+    // Keep shift_assignments in sync and notify the affected user when shiftId changes
     if (newShiftId !== undefined) {
       await syncShiftAssignment(id, newShiftId);
+
+      if (newShiftId !== null) {
+        const effectiveDate = new Date().toISOString().split("T")[0];
+        const [newShift] = await db
+          .select({ name: shiftsTable.name, sergeantId: shiftsTable.sergeantId })
+          .from(shiftsTable)
+          .where(eq(shiftsTable.id, newShiftId))
+          .limit(1);
+
+        const notificationMessage = `You have been assigned to ${newShift?.name ?? "a new shift"}, effective ${effectiveDate}.`;
+
+        await db.insert(notificationLogsTable).values({
+          recipientId: id,
+          type: "shift_assigned",
+          message: notificationMessage,
+          isRead: false,
+        });
+
+        await sendEmail(
+          user.email,
+          "Shift Assignment Updated",
+          `${user.firstName} ${user.lastName},\n\nYou have been assigned to ${newShift?.name ?? "a new shift"}, effective ${effectiveDate}.\n\nPlease log in to the Shift Scheduler to view your schedule.`
+        );
+
+        // Also notify the shift's sergeant (if different from the affected user)
+        const requesterId = req.session.userId!;
+        if (newShift?.sergeantId && newShift.sergeantId !== id && newShift.sergeantId !== requesterId) {
+          await db.insert(notificationLogsTable).values({
+            recipientId: newShift.sergeantId,
+            type: "shift_assigned",
+            message: `${user.firstName} ${user.lastName} has been assigned to your shift (${newShift.name}), effective ${effectiveDate}.`,
+            isRead: false,
+          });
+        }
+      }
     }
 
     res.json({

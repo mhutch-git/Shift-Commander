@@ -34,7 +34,9 @@ app.use(
   }),
 );
 
-// Determine allowed origins — prefer explicit env var, otherwise allow *.replit.dev patterns
+// Determine allowed origins.
+// In production, ALLOWED_ORIGINS must be set explicitly — no wildcard fallback.
+// In development, we also permit *.janeway.replit.dev (preview domains) and localhost.
 const ALLOWED_ORIGINS_ENV = process.env.ALLOWED_ORIGINS;
 const allowedOrigins: string[] = ALLOWED_ORIGINS_ENV
   ? ALLOWED_ORIGINS_ENV.split(",").map((s) => s.trim())
@@ -43,10 +45,11 @@ const allowedOrigins: string[] = ALLOWED_ORIGINS_ENV
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
   if (allowedOrigins.includes(origin)) return true;
-  // Allow any replit.dev subdomain (covers dev and published environments)
-  if (/^https:\/\/[a-z0-9-]+\.(janeway\.replit\.dev|replit\.app)$/i.test(origin)) return true;
-  // Allow localhost in development
-  if (process.env.NODE_ENV !== "production" && /^http:\/\/localhost(:\d+)?$/.test(origin)) return true;
+  if (process.env.NODE_ENV !== "production") {
+    // Allow Replit preview (janeway) domains and localhost only in development
+    if (/^https:\/\/[a-z0-9-]+\.janeway\.replit\.dev$/i.test(origin)) return true;
+    if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return true;
+  }
   return false;
 }
 
