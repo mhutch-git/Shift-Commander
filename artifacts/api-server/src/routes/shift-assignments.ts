@@ -186,12 +186,20 @@ router.delete("/shift-assignments/:id", requireRole(["admin", "sergeant"]), asyn
       .limit(1);
 
     if (user) {
+      const removalMessage = "Your shift assignment has been removed. Please contact your supervisor for details.";
+
       await db.insert(notificationLogsTable).values({
         recipientId: assignment.userId,
         type: "shift_assigned",
-        message: "Your shift assignment has been removed. Please contact your supervisor for details.",
+        message: removalMessage,
         isRead: false,
       });
+
+      await sendEmail(
+        user.email,
+        "Shift Assignment Removed",
+        `${user.firstName} ${user.lastName},\n\n${removalMessage}\n\nPlease log in to the Shift Scheduler to view your current status.`
+      );
     }
 
     await db.delete(shiftAssignmentsTable).where(eq(shiftAssignmentsTable.id, id));

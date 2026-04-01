@@ -210,9 +210,10 @@ router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
 router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<void> => {
   try {
     const id = parseInt(req.params.id as string);
-    const { firstName, lastName, role, shiftId, isActive, password } = req.body;
+    const { email, firstName, lastName, role, shiftId, isActive, password } = req.body;
 
     const updates: Record<string, unknown> = {};
+    if (email !== undefined) updates.email = email.toLowerCase().trim();
     if (firstName !== undefined) updates.firstName = firstName;
     if (lastName !== undefined) updates.lastName = lastName;
     if (role !== undefined) updates.role = role;
@@ -290,8 +291,13 @@ router.patch("/users/:id", requireRole(["admin"]), async (req, res): Promise<voi
       shiftId: user.shiftId,
       isActive: user.isActive,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     req.log.error(err);
+    const pgErr = err as { code?: string };
+    if (pgErr.code === "23505") {
+      res.status(409).json({ message: "Email already in use" });
+      return;
+    }
     res.status(500).json({ message: "Internal server error" });
   }
 });
