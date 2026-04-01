@@ -49,6 +49,8 @@ async function buildScheduleDay(date: Date) {
   };
 }
 
+const MAX_SCHEDULE_DAYS = 62;
+
 router.get("/schedule", requireAuth, async (req, res): Promise<void> => {
   try {
     const { start, end } = req.query;
@@ -60,9 +62,23 @@ router.get("/schedule", requireAuth, async (req, res): Promise<void> => {
       ? new Date(`${end}T00:00:00.000Z`)
       : addDays(startDate, 27);
 
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      res.status(400).json({ message: "Invalid start or end date" });
+      return;
+    }
+    if (endDate < startDate) {
+      res.status(400).json({ message: "end must be on or after start" });
+      return;
+    }
+
+    // Clamp range to avoid unbounded per-day DB calls
+    const clampedEnd = endDate > addDays(startDate, MAX_SCHEDULE_DAYS - 1)
+      ? addDays(startDate, MAX_SCHEDULE_DAYS - 1)
+      : endDate;
+
     const days = [];
     let current = startDate;
-    while (current <= endDate) {
+    while (current <= clampedEnd) {
       days.push(await buildScheduleDay(current));
       current = addDays(current, 1);
     }

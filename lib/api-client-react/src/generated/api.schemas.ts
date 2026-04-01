@@ -290,8 +290,14 @@ export type ListShiftAssignmentsParams = {
 };
 
 export type GetScheduleParams = {
-  start: string;
-  end: string;
+  /**
+   * Start date (YYYY-MM-DD). Defaults to today if omitted.
+   */
+  start?: string;
+  /**
+   * End date (YYYY-MM-DD). Defaults to 28 days from start if omitted. Clamped to 62 days.
+   */
+  end?: string;
 };
 
 export type ListDayOffRequestsParams = {

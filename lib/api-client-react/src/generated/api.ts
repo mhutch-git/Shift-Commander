@@ -1276,7 +1276,7 @@ export const useDeleteShiftAssignment = <
 /**
  * @summary Get schedule for a date range
  */
-export const getGetScheduleUrl = (params: GetScheduleParams) => {
+export const getGetScheduleUrl = (params?: GetScheduleParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1293,7 +1293,7 @@ export const getGetScheduleUrl = (params: GetScheduleParams) => {
 };
 
 export const getSchedule = async (
-  params: GetScheduleParams,
+  params?: GetScheduleParams,
   options?: RequestInit,
 ): Promise<ScheduleDay[]> => {
   return customFetch<ScheduleDay[]>(getGetScheduleUrl(params), {
@@ -1310,7 +1310,7 @@ export const getGetScheduleQueryOptions = <
   TData = Awaited<ReturnType<typeof getSchedule>>,
   TError = ErrorType<unknown>,
 >(
-  params: GetScheduleParams,
+  params?: GetScheduleParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getSchedule>>,
@@ -1348,7 +1348,7 @@ export function useGetSchedule<
   TData = Awaited<ReturnType<typeof getSchedule>>,
   TError = ErrorType<unknown>,
 >(
-  params: GetScheduleParams,
+  params?: GetScheduleParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getSchedule>>,

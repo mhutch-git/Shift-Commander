@@ -257,8 +257,16 @@ export const DeleteShiftAssignmentResponse = zod.object({
  * @summary Get schedule for a date range
  */
 export const GetScheduleQueryParams = zod.object({
-  start: zod.coerce.string(),
-  end: zod.coerce.string(),
+  start: zod.coerce
+    .string()
+    .optional()
+    .describe("Start date (YYYY-MM-DD). Defaults to today if omitted."),
+  end: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "End date (YYYY-MM-DD). Defaults to 28 days from start if omitted. Clamped to 62 days.",
+    ),
 });
 
 export const GetScheduleResponseItem = zod.object({
