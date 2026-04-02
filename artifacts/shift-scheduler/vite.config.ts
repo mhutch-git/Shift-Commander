@@ -53,6 +53,10 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    // In local dev (non-Replit), proxy /api calls to the Express API server
+    ...(isDevMode && !isReplit
+      ? { proxy: { "/api": { target: "http://localhost:3001", changeOrigin: true } } }
+      : {}),
     fs: {
       strict: true,
       deny: ["**/.*"],
