@@ -56,8 +56,17 @@ function getMonthBounds(year: number, month: number) {
   };
 }
 
+// For Date objects created with Date.UTC (calendar/schedule dates) — use UTC getters
 function toDateStr(d: Date) {
   return d.toISOString().split("T")[0]!;
+}
+
+// For local wall-clock dates (today, viewDate) — use local getters
+function localDateStr(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function getDaysInMonth(year: number, month: number) {
@@ -230,16 +239,17 @@ export default function SchedulePage() {
   const [viewDate, setViewDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<ScheduleDay | null>(null);
 
-  const today = toDateStr(new Date());
+  const today = localDateStr(new Date());
 
   // Date range for current view
   const { start, end } = useMemo(() => {
     if (viewMode === "month") {
       return getMonthBounds(viewDate.getFullYear(), viewDate.getMonth());
     } else {
-      // 5-day window anchored to viewDate
-      const s = new Date(Date.UTC(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate()));
-      return { start: toDateStr(s), end: toDateStr(addDays(s, 4)) };
+      // 5-day window — anchor on local today to avoid UTC offset shifting the day
+      const s = localDateStr(viewDate);
+      const anchor = new Date(s + "T00:00:00Z");
+      return { start: s, end: toDateStr(addDays(anchor, 4)) };
     }
   }, [viewMode, viewDate]);
 
@@ -299,14 +309,12 @@ export default function SchedulePage() {
     ? `${MONTH_NAMES[viewDate.getMonth()]} ${viewDate.getFullYear()}`
     : `${start} – ${end}`;
 
-  // Days to render
+  // Days to render — anchor to the start date string to avoid local/UTC mismatch
   const fiveDays = useMemo(() => {
     if (viewMode !== "5days") return [];
-    return Array.from({ length: 5 }, (_, i) => {
-      const d = new Date(Date.UTC(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() + i));
-      return toDateStr(d);
-    });
-  }, [viewMode, viewDate]);
+    const anchor = new Date(start + "T00:00:00Z");
+    return Array.from({ length: 5 }, (_, i) => toDateStr(addDays(anchor, i)));
+  }, [viewMode, start]);
 
   const monthDays = viewMode === "month" ? getDaysInMonth(viewDate.getFullYear(), viewDate.getMonth()) : [];
   const firstDayOfWeek = monthDays[0]?.getUTCDay() ?? 0;
@@ -460,11 +468,11 @@ export default function SchedulePage() {
             {/* ── 5-Day view ── */}
             {viewMode === "5days" && (
               schedule.isLoading ? (
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
                   {Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-64 rounded" />)}
                 </div>
               ) : (
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
                   {fiveDays.map((key) => {
                     const d = new Date(key + "T00:00:00Z");
                     const info = scheduleMap[key];
@@ -507,63 +515,65 @@ export default function SchedulePage() {
                           </div>
                         </div>
 
-                        {/* Day shift */}
-                        <div className="w-full mb-2">
-                          <div className="flex items-center gap-1 mb-1">
-                            <Sun className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                            <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Day</span>
+                        {/* Day / Night — always side by side */}
+                        <div className="flex w-full gap-0.5 flex-1">
+                          {/* Day — left */}
+                          <div className="flex-1 min-w-0 border-r border-border/40 pr-1">
+                            <div className="flex items-center gap-0.5 mb-0.5">
+                              <Sun className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                              <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Day</span>
+                            </div>
+                            <div className="flex flex-col gap-0 leading-snug">
+                              {dayNames.map((name) => {
+                                const off = dayOffForKey[name];
+                                const isFullOff = !!off && !off.isPartialDay;
+                                const isPartial = !!off?.isPartialDay;
+                                const isSgt = name === daySgtName;
+                                return (
+                                  <span key={name} className={`text-[10px] truncate ${
+                                    isFullOff ? "text-red-600 line-through"
+                                    : isPartial ? "text-amber-700 font-medium"
+                                    : isSgt ? "text-foreground font-bold"
+                                    : "text-foreground/80"
+                                  }`}>{name}</span>
+                                );
+                              })}
+                              {dailyDay.map((a) => (
+                                <span key={`da-${a.id}`} className="text-[10px] truncate text-green-700">+{a.name}</span>
+                              ))}
+                              {dayNames.length === 0 && dailyDay.length === 0 && (
+                                <span className="text-[10px] text-muted-foreground/50 italic">Off</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-col gap-0 leading-snug">
-                            {dayNames.map((name) => {
-                              const off = dayOffForKey[name];
-                              const isFullOff = !!off && !off.isPartialDay;
-                              const isPartial = !!off?.isPartialDay;
-                              const isSgt = name === daySgtName;
-                              return (
-                                <span key={name} className={`text-[10px] truncate ${
-                                  isFullOff ? "text-red-600 line-through"
-                                  : isPartial ? "text-amber-700 font-medium"
-                                  : isSgt ? "text-foreground font-bold"
-                                  : "text-foreground/80"
-                                }`}>{name}</span>
-                              );
-                            })}
-                            {dailyDay.map((a) => (
-                              <span key={`da-${a.id}`} className="text-[10px] truncate text-green-700">+{a.name}</span>
-                            ))}
-                            {dayNames.length === 0 && dailyDay.length === 0 && (
-                              <span className="text-[10px] text-muted-foreground/50 italic">Off duty</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Night shift */}
-                        <div className="w-full">
-                          <div className="flex items-center gap-1 mb-1">
-                            <Moon className="w-3 h-3 text-primary flex-shrink-0" />
-                            <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">Night</span>
-                          </div>
-                          <div className="flex flex-col gap-0 leading-snug">
-                            {nightNames.map((name) => {
-                              const off = dayOffForKey[name];
-                              const isFullOff = !!off && !off.isPartialDay;
-                              const isPartial = !!off?.isPartialDay;
-                              const isSgt = name === nightSgtName;
-                              return (
-                                <span key={name} className={`text-[10px] truncate ${
-                                  isFullOff ? "text-red-600 line-through"
-                                  : isPartial ? "text-amber-700 font-medium"
-                                  : isSgt ? "text-foreground font-bold"
-                                  : "text-foreground/80"
-                                }`}>{name}</span>
-                              );
-                            })}
-                            {dailyNight.map((a) => (
-                              <span key={`na-${a.id}`} className="text-[10px] truncate text-green-700">+{a.name}</span>
-                            ))}
-                            {nightNames.length === 0 && dailyNight.length === 0 && (
-                              <span className="text-[10px] text-muted-foreground/50 italic">Off duty</span>
-                            )}
+                          {/* Night — right */}
+                          <div className="flex-1 min-w-0 pl-1">
+                            <div className="flex items-center gap-0.5 mb-0.5">
+                              <Moon className="w-3 h-3 text-primary flex-shrink-0" />
+                              <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">Night</span>
+                            </div>
+                            <div className="flex flex-col gap-0 leading-snug">
+                              {nightNames.map((name) => {
+                                const off = dayOffForKey[name];
+                                const isFullOff = !!off && !off.isPartialDay;
+                                const isPartial = !!off?.isPartialDay;
+                                const isSgt = name === nightSgtName;
+                                return (
+                                  <span key={name} className={`text-[10px] truncate ${
+                                    isFullOff ? "text-red-600 line-through"
+                                    : isPartial ? "text-amber-700 font-medium"
+                                    : isSgt ? "text-foreground font-bold"
+                                    : "text-foreground/80"
+                                  }`}>{name}</span>
+                                );
+                              })}
+                              {dailyNight.map((a) => (
+                                <span key={`na-${a.id}`} className="text-[10px] truncate text-green-700">+{a.name}</span>
+                              ))}
+                              {nightNames.length === 0 && dailyNight.length === 0 && (
+                                <span className="text-[10px] text-muted-foreground/50 italic">Off</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </button>
