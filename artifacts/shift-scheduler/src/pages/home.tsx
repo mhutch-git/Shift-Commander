@@ -378,9 +378,6 @@ export default function HomePage() {
     }
   };
 
-  const isReserve = user?.role === "reserve";
-  const hasShift = !!user?.shiftId;
-
   return (
     <AppLayout>
       <div className="space-y-5 max-w-5xl">
@@ -413,12 +410,7 @@ export default function HomePage() {
               </Link>
             </CardHeader>
             <CardContent className="pt-1">
-              {isReserve ? (
-                <p className="text-sm text-muted-foreground italic py-4">
-                  Reserve officers appear on the schedule only when specifically assigned.
-                  {myAssignments.length === 0 && " No upcoming assignments."}
-                </p>
-              ) : scheduleLoading ? (
+              {scheduleLoading ? (
                 <div className="space-y-1">
                   <Skeleton className="h-6 w-full" />
                   {Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
@@ -439,7 +431,7 @@ export default function HomePage() {
           <div className="space-y-5">
 
             {/* Day-Off Requests */}
-            <Card>
+            {user?.role !== "reserve" && <Card>
               <CardHeader className="pb-2 flex flex-row items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <CalendarOff className="w-4 h-4 text-muted-foreground" />
@@ -473,7 +465,7 @@ export default function HomePage() {
                   </ul>
                 )}
               </CardContent>
-            </Card>
+            </Card>}
 
             {/* Special Assignments */}
             {myAssignments.length > 0 && (

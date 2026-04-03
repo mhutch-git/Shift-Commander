@@ -6,6 +6,7 @@ import {
   type CreateUserBodyRole, type User, type Shift,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
+import { sortByRole } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -150,7 +151,7 @@ export default function UsersPage() {
                     {users?.length === 0 ? (
                       <tr><td colSpan={isAdmin ? 6 : 5} className="py-6 text-center text-muted-foreground">No personnel found</td></tr>
                     ) : (
-                      users?.map((u) => (
+                      sortByRole(users ?? []).map((u) => (
                         <tr key={u.id} className="hover:bg-muted/30 transition-colors" data-testid={`user-row-${u.id}`}>
                           <td className="py-2.5 pr-4 font-medium text-foreground">{u.firstName} {u.lastName}</td>
                           <td className="py-2.5 pr-4 text-muted-foreground text-xs">{u.email}</td>

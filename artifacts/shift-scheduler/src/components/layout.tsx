@@ -65,24 +65,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location === "/day-off-requests"}>
-                      <Link href="/day-off-requests" data-testid="nav-requests">
-                        <CalendarOff />
-                        <span>Day-Off Requests</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  {(user?.role === "admin" || user?.role === "sergeant") && (
+                  {user?.role !== "reserve" && (
                     <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={location === "/assign-to-shift"}>
-                        <Link href="/assign-to-shift" data-testid="nav-assign">
-                          <UserPlus />
-                          <span>Assign to Shift</span>
+                      <SidebarMenuButton asChild isActive={location === "/day-off-requests"}>
+                        <Link href="/day-off-requests" data-testid="nav-requests">
+                          <CalendarOff />
+                          <span>Day-Off Requests</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={location === "/assign-to-shift"}>
+                      <Link href="/assign-to-shift" data-testid="nav-assign">
+                        <UserPlus />
+                        <span>Assign to Shift</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={location === "/notifications"}>
                       <Link href="/notifications" data-testid="nav-notifications">
@@ -107,14 +107,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location.startsWith("/shifts")}>
-                      <Link href="/shifts" data-testid="nav-shifts">
-                        <Shield />
-                        <span>Shifts</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  {user?.role === "admin" && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={location.startsWith("/shifts")}>
+                        <Link href="/shifts" data-testid="nav-shifts">
+                          <Shield />
+                          <span>Shifts</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

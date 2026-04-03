@@ -42,17 +42,17 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/shifts">
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["admin"]}>
           <ShiftsPage />
         </ProtectedRoute>
       </Route>
       <Route path="/shifts/:id">
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["admin"]}>
           <ShiftDetailPage />
         </ProtectedRoute>
       </Route>
       <Route path="/day-off-requests">
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["admin", "sergeant", "deputy"]}>
           <DayOffRequestsPage />
         </ProtectedRoute>
       </Route>
@@ -67,7 +67,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/assign-to-shift">
-        <ProtectedRoute allowedRoles={["admin", "sergeant"]}>
+        <ProtectedRoute>
           <AssignToShiftPage />
         </ProtectedRoute>
       </Route>

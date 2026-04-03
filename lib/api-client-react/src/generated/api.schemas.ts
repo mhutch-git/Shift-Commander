@@ -453,6 +453,7 @@ export type ListDayOffRequestsParams = {
   userId?: number;
   status?: ListDayOffRequestsStatus;
   shiftId?: number;
+  reviewedById?: number;
 };
 
 export type ListDayOffRequestsStatus =

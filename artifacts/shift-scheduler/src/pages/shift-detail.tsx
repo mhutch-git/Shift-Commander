@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Shield, UserPlus, Trash2, UserCog } from "lucide-react";
+import { sortByRole } from "@/lib/utils";
 
 export default function ShiftDetailPage() {
   const params = useParams<{ id: string }>();
@@ -226,7 +227,7 @@ export default function ShiftDetailPage() {
                 <SelectValue placeholder="Select a deputy..." />
               </SelectTrigger>
               <SelectContent>
-                {unassignedUsers.map((u) => (
+                {sortByRole(unassignedUsers).map((u) => (
                   <SelectItem key={u.id} value={String(u.id)}>
                     {u.firstName} {u.lastName} ({u.role})
                   </SelectItem>
@@ -253,7 +254,7 @@ export default function ShiftDetailPage() {
                 <SelectValue placeholder="Select a sergeant..." />
               </SelectTrigger>
               <SelectContent>
-                {sergeantCandidates.map((u) => (
+                {sortByRole(sergeantCandidates).map((u) => (
                   <SelectItem key={u.id} value={String(u.id)}>
                     {u.firstName} {u.lastName} ({u.role})
                   </SelectItem>

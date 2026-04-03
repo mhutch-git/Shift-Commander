@@ -8,6 +8,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
+import { sortByRole } from "@/lib/utils";
+import { UserCombobox } from "@/components/ui/user-combobox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -97,6 +99,16 @@ export default function DayOffRequestsPage() {
     { query: { queryKey: getListDayOffRequestsQueryKey({ userId: user?.id }) } }
   );
 
+  const approvedByMeRequests = useListDayOffRequests(
+    isSergeantOrAdmin ? { reviewedById: user?.id, status: "approved" } : undefined,
+    {
+      query: {
+        enabled: isSergeantOrAdmin,
+        queryKey: getListDayOffRequestsQueryKey({ reviewedById: user?.id, status: "approved" }),
+      }
+    }
+  );
+
   const pendingRequests = useListDayOffRequests(
     isSergeantOrAdmin ? { status: "pending", shiftId: user?.shiftId ?? undefined } : undefined,
     {
@@ -153,6 +165,7 @@ export default function DayOffRequestsPage() {
       await deleteRequest.mutateAsync({ id: deleteConfirmId });
       queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ userId: user?.id }) });
       queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ status: "pending", shiftId: user?.shiftId ?? undefined }) });
+      queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ reviewedById: user?.id, status: "approved" }) });
       toast({ title: "Request removed" });
     } catch {
       toast({ title: "Failed to remove request", variant: "destructive" });
@@ -180,6 +193,7 @@ export default function DayOffRequestsPage() {
       }
       queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ status: "pending", shiftId: user?.shiftId ?? undefined }) });
       queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ userId: user?.id }) });
+      queryClient.invalidateQueries({ queryKey: getListDayOffRequestsQueryKey({ reviewedById: user?.id, status: "approved" }) });
       setReviewOpen(false);
     } catch {
       toast({ title: `Failed to ${reviewAction} request`, variant: "destructive" });
@@ -202,22 +216,13 @@ export default function DayOffRequestsPage() {
               {isSergeantOrAdmin && selectableUsers.length > 0 && (
                 <div className="space-y-1.5">
                   <Label>Request For</Label>
-                  <Select
+                  <UserCombobox
+                    users={sortByRole(selectableUsers)}
                     value={String(onBehalfOfUserId)}
-                    onValueChange={(v) => setOnBehalfOfUserId(v === "self" ? "self" : parseInt(v))}
-                  >
-                    <SelectTrigger data-testid="select-on-behalf">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="self">Myself ({user?.firstName} {user?.lastName})</SelectItem>
-                      {selectableUsers.map((u) => (
-                        <SelectItem key={u.id} value={String(u.id)}>
-                          {u.firstName} {u.lastName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => setOnBehalfOfUserId(v === "self" ? "self" : parseInt(v))}
+                    prefixOption={{ value: "self", label: `Myself (${user?.firstName} ${user?.lastName})` }}
+                    data-testid="select-on-behalf"
+                  />
                 </div>
               )}
 
@@ -341,6 +346,11 @@ export default function DayOffRequestsPage() {
                     {pendingRequests.data?.length}
                   </span>
                 )}
+              </TabsTrigger>
+            )}
+            {isSergeantOrAdmin && (
+              <TabsTrigger value="approved-by-me" data-testid="tab-approved-by-me">
+                Approved by Me
               </TabsTrigger>
             )}
           </TabsList>
@@ -490,6 +500,73 @@ export default function DayOffRequestsPage() {
                                     className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                     onClick={() => setDeleteConfirmId(req.id)}
                                     data-testid={`btn-delete-pending-${req.id}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {isSergeantOrAdmin && (
+            <TabsContent value="approved-by-me" className="mt-4">
+              <Card className="border-card-border">
+                <CardContent className="pt-4">
+                  {approvedByMeRequests.isLoading ? (
+                    <div className="space-y-3">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
+                            <th className="pb-2 pr-4">Deputy</th>
+                            <th className="pb-2 pr-4">Date</th>
+                            <th className="pb-2 pr-4">Type</th>
+                            <th className="pb-2 pr-4">Reason</th>
+                            <th className="pb-2 pr-4">Approved</th>
+                            <th className="pb-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {approvedByMeRequests.data?.length === 0 ? (
+                            <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No approved requests</td></tr>
+                          ) : (
+                            approvedByMeRequests.data?.map((req) => (
+                              <tr key={req.id} className="hover:bg-muted/30 transition-colors" data-testid={`approved-request-row-${req.id}`}>
+                                <td className="py-2.5 pr-4 font-medium text-foreground">
+                                  {req.requesterFirstName} {req.requesterLastName}
+                                </td>
+                                <td className="py-2.5 pr-4">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span>{req.requestedDate}</span>
+                                    {req.isPartialDay && (
+                                      <span className="flex items-center gap-1 text-xs text-amber-700 font-normal">
+                                        <Clock3 className="w-3 h-3" />
+                                        {req.partialStartTime}–{req.partialEndTime}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 pr-4"><RequestTypeBadge type={req.requestType} /></td>
+                                <td className="py-2.5 pr-4 text-muted-foreground max-w-xs truncate">{req.reason}</td>
+                                <td className="py-2.5 pr-4 text-xs text-muted-foreground">
+                                  {req.reviewedAt ? new Date(req.reviewedAt).toLocaleDateString() : "—"}
+                                </td>
+                                <td className="py-2.5">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    onClick={() => setDeleteConfirmId(req.id)}
+                                    data-testid={`btn-delete-approved-${req.id}`}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>

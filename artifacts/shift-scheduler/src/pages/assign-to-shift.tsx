@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { sortByRole } from "@/lib/utils";
+import { UserCombobox } from "@/components/ui/user-combobox";
 import { UserPlus, Trash2, Sun, Moon } from "lucide-react";
 
 function ShiftTypeBadge({ type }: { type: string }) {
@@ -58,11 +60,14 @@ export default function AssignToShiftPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isAdminOrSgt = currentUser?.role === "admin" || currentUser?.role === "sergeant";
+  const isRegularUser = !isAdminOrSgt;
 
   const today = new Date().toISOString().split("T")[0]!;
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedShiftType, setSelectedShiftType] = useState<"day" | "night">("day");
-  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState(() =>
+    currentUser && !isAdminOrSgt ? String(currentUser.id) : ""
+  );
   const [notes, setNotes] = useState("");
 
   const { data: users } = useListUsers();
@@ -76,7 +81,9 @@ export default function AssignToShiftPage() {
   const createAssignment = useCreateDailyAssignment();
   const deleteAssignment = useDeleteDailyAssignment();
 
-  const activeUsers = users?.filter(u => u.isActive && u.role !== "admin") ?? [];
+  const activeUsers = isRegularUser
+    ? (users?.filter(u => u.id === currentUser?.id) ?? [])
+    : (users?.filter(u => u.isActive && u.role !== "admin") ?? []);
 
   // Check if user is already assigned on the selected date (any shift)
   const assignedOnSelectedDate = new Set(
@@ -136,8 +143,7 @@ export default function AssignToShiftPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-[340px_1fr]">
-          {isAdminOrSgt && (
-            <Card>
+          <Card>
               <CardHeader>
                 <CardTitle className="text-base">New Assignment</CardTitle>
               </CardHeader>
@@ -165,25 +171,16 @@ export default function AssignToShiftPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label>Personnel</Label>
-                  <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a person…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeUsers
-                        .slice()
-                        .sort((a, b) => a.lastName.localeCompare(b.lastName))
-                        .map(u => (
-                          <SelectItem key={u.id} value={String(u.id)}>
-                            {u.firstName} {u.lastName}
-                            {u.role === "reserve" ? " (Reserve)" : ""}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isAdminOrSgt && (
+                  <div className="space-y-1.5">
+                    <Label>Personnel</Label>
+                    <UserCombobox
+                      users={sortByRole(activeUsers)}
+                      value={selectedUserId}
+                      onChange={setSelectedUserId}
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <Label>Notes <span className="text-muted-foreground font-normal">(optional)</span></Label>
@@ -204,7 +201,6 @@ export default function AssignToShiftPage() {
                 </Button>
               </CardContent>
             </Card>
-          )}
 
           {/* Upcoming assignments list */}
           <Card>
@@ -226,60 +222,60 @@ export default function AssignToShiftPage() {
               ) : sortedAssignments.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic py-4 text-center">No upcoming assignments.</p>
               ) : (
-                <ul className="divide-y divide-border">
-                  {sortedAssignments.map((a: DailyAssignment) => (
-                    <li key={a.id} className="flex items-center gap-3 py-3">
-                      <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-x-4 items-center sm:grid-cols-[180px_auto_1fr_auto]">
-                        {/* Date */}
-                        <span className="text-sm font-medium text-foreground">
-                          {formatDate(a.assignedDate)}
-                        </span>
-                        {/* Shift type badge */}
-                        <ShiftTypeBadge type={a.shiftType} />
-                        {/* Name + role */}
-                        <div className="hidden sm:flex flex-col gap-0.5 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm truncate">
-                              {a.firstName} {a.lastName}
-                            </span>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
+                        <th className="pb-2 pr-4 whitespace-nowrap">Date</th>
+                        <th className="pb-2 pr-4">Shift</th>
+                        <th className="pb-2 pr-4">Name</th>
+                        <th className="pb-2 pr-4">Role</th>
+                        <th className="pb-2 pr-4">Notes</th>
+                        <th className="pb-2 pr-4">Added By</th>
+                        <th className="pb-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {sortedAssignments.map((a: DailyAssignment) => (
+                        <tr key={a.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-2 pr-4 whitespace-nowrap font-medium text-foreground">
+                            {formatDate(a.assignedDate)}
+                          </td>
+                          <td className="py-2 pr-4">
+                            <ShiftTypeBadge type={a.shiftType} />
+                          </td>
+                          <td className="py-2 pr-4 whitespace-nowrap">
+                            {a.firstName} {a.lastName}
+                          </td>
+                          <td className="py-2 pr-4">
                             <RoleBadge role={a.role} />
-                            {a.notes && (
-                              <span className="text-xs text-muted-foreground truncate">{a.notes}</span>
+                          </td>
+                          <td className="py-2 pr-4 text-muted-foreground max-w-[160px] truncate">
+                            {a.notes ?? <span className="text-muted-foreground/40">—</span>}
+                          </td>
+                          <td className="py-2 pr-4 text-xs text-muted-foreground whitespace-nowrap">
+                            {a.createdByFirstName
+                              ? `${a.createdByFirstName} ${a.createdByLastName}`
+                              : <span className="text-muted-foreground/40">—</span>}
+                          </td>
+                          <td className="py-2">
+                            {(isAdminOrSgt || a.userId === currentUser?.id) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleRemove(a.id)}
+                                disabled={deleteAssignment.isPending}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             )}
-                          </div>
-                          {a.createdByFirstName && (
-                            <span className="text-xs text-muted-foreground">
-                              Added by {a.createdByFirstName} {a.createdByLastName}
-                            </span>
-                          )}
-                        </div>
-                        {/* Mobile: name below date row */}
-                        <div className="sm:hidden col-span-2 mt-1 flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{a.firstName} {a.lastName}</span>
-                            <RoleBadge role={a.role} />
-                          </div>
-                          {a.createdByFirstName && (
-                            <span className="text-xs text-muted-foreground">
-                              Added by {a.createdByFirstName} {a.createdByLastName}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {isAdminOrSgt && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                          onClick={() => handleRemove(a.id)}
-                          disabled={deleteAssignment.isPending}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardContent>
           </Card>

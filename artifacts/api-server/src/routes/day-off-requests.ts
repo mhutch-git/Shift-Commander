@@ -50,7 +50,7 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
   try {
     const requesterId = req.session.userId!;
     const requesterRole = req.session.role ?? "";
-    const { userId, status, shiftId } = req.query;
+    const { userId, status, shiftId, reviewedById } = req.query;
 
     const query = db
       .select({
@@ -103,13 +103,16 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
     }
     // Admins see all (no restriction)
 
-    // Apply optional client-side filters on top
-    if (userId && requesterRole === "admin") {
+    // Apply optional filters on top of role-based scoping
+    if (userId) {
       conditions.push(eq(dayOffRequestsTable.userId, parseInt(userId as string)));
     }
     if (status) conditions.push(eq(dayOffRequestsTable.status, status as string));
-    if (shiftId && requesterRole === "admin") {
+    if (shiftId) {
       conditions.push(eq(usersTable.shiftId, parseInt(shiftId as string)));
+    }
+    if (reviewedById) {
+      conditions.push(eq(dayOffRequestsTable.reviewedById, parseInt(reviewedById as string)));
     }
 
     const requests = conditions.length > 0
