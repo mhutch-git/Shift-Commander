@@ -83,25 +83,30 @@ router.get("/day-off-requests", requireAuth, async (req, res): Promise<void> => 
 
     const conditions = [];
 
-    // Role-based scoping
-    if (requesterRole === "deputy") {
-      // Deputies can only see their own requests
-      conditions.push(eq(dayOffRequestsTable.userId, requesterId));
-    } else if (requesterRole === "sergeant") {
-      // Sergeants see requests from their own shift's personnel
-      const [sergeantShift] = await db
-        .select({ id: shiftsTable.id })
-        .from(shiftsTable)
-        .where(eq(shiftsTable.sergeantId, requesterId))
-        .limit(1);
-      if (sergeantShift) {
-        conditions.push(eq(usersTable.shiftId, sergeantShift.id));
-      } else {
-        // Sergeant not assigned to a shift — show only own requests
+    // Approved requests are public schedule information — all roles can see them.
+    // Role-based scoping only applies when not filtering for approved status.
+    const fetchingApproved = status === "approved";
+
+    if (!fetchingApproved) {
+      if (requesterRole === "deputy") {
+        // Deputies can only see their own requests
         conditions.push(eq(dayOffRequestsTable.userId, requesterId));
+      } else if (requesterRole === "sergeant") {
+        // Sergeants see requests from their own shift's personnel
+        const [sergeantShift] = await db
+          .select({ id: shiftsTable.id })
+          .from(shiftsTable)
+          .where(eq(shiftsTable.sergeantId, requesterId))
+          .limit(1);
+        if (sergeantShift) {
+          conditions.push(eq(usersTable.shiftId, sergeantShift.id));
+        } else {
+          // Sergeant not assigned to a shift — show only own requests
+          conditions.push(eq(dayOffRequestsTable.userId, requesterId));
+        }
       }
+      // Admins see all (no restriction)
     }
-    // Admins see all (no restriction)
 
     // Apply optional filters on top of role-based scoping
     if (userId) {

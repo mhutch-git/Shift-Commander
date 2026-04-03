@@ -534,9 +534,9 @@ export default function HomePage() {
                 <span>No unread notifications.</span>
               </div>
             ) : (
-              <ul className="grid sm:grid-cols-2 gap-x-6 divide-y sm:divide-y-0 divide-border">
+              <div className="grid sm:grid-cols-2 gap-1">
                 {unreadNotifications.map((n: Notification) => (
-                  <li key={n.id} className="flex items-start gap-3 py-2.5 border-b border-border last:border-0 sm:[&:nth-last-child(-n+2)]:border-0">
+                  <div key={n.id} className="flex items-start gap-3 py-2 px-2 rounded-md bg-primary/5">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-1.5" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground leading-snug">{n.message}</p>
@@ -546,16 +546,16 @@ export default function HomePage() {
                     </div>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="text-xs shrink-0 h-6 px-2"
+                      size="icon"
+                      className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
                       onClick={() => handleMarkRead(n.id)}
                       disabled={markRead.isPending}
                     >
-                      Dismiss
+                      <CheckCheck className="w-3 h-3" />
                     </Button>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </CardContent>
         </Card>
