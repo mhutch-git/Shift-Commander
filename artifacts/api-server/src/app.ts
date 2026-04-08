@@ -18,7 +18,7 @@ const app: Express = express();
 app.set("trust proxy", 1);
 
 // Security headers
-// Allow Google Fonts (loaded in index.html) and self-hosted assets.
+// Allow Google Fonts and embedding in Dakboard (iframe).
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -29,8 +29,12 @@ app.use(
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
+        frameAncestors: ["'self'", "https://dakboard.com", "https://*.dakboard.com"],
       },
     },
+    // Allow iframes from Dakboard; X-Frame-Options is superseded by CSP frame-ancestors
+    // but we disable it so older browsers also allow the embed.
+    frameguard: false,
   })
 );
 

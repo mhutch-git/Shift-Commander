@@ -287,8 +287,32 @@ export default function PublicCalendarPage() {
     return map;
   }, [dailyQuery.data]);
 
-  const scheduleMap: Record<string, ScheduleDay> = {};
-  schedule.data?.forEach((day) => { scheduleMap[day.date] = day; });
+  const scheduleMap = useMemo(() => {
+    const map: Record<string, ScheduleDay> = {};
+    schedule.data?.forEach((day) => { map[day.date] = day; });
+    return map;
+  }, [schedule.data]);
+
+  // Max names in any single shift column across all visible days — used to
+  // scale the font size so every name fits without truncation.
+  const maxNamesPerColumn = useMemo(() => {
+    let max = 1;
+    for (const key of days) {
+      const info = scheduleMap[key];
+      if (!info) continue;
+      const dayShift = info.shifts.find((s) => s.shiftType === "day" && s.isWorking);
+      const nightShift = info.shifts.find((s) => s.shiftType === "night" && s.isWorking);
+      const dayTotal = (dayShift?.memberNames.length ?? 0) + (dailyMap[key]?.day.length ?? 0);
+      const nightTotal = (nightShift?.memberNames.length ?? 0) + (dailyMap[key]?.night.length ?? 0);
+      max = Math.max(max, dayTotal, nightTotal);
+    }
+    return max;
+  }, [days, scheduleMap, dailyMap]);
+
+  // Font size for names: fit maxNamesPerColumn rows in the available cell height.
+  // Cell height ≈ (100vh - 160px) / 5; each name row needs ~1.15 × fontSize.
+  // min() constrains by both viewport width (1vw) and viewport height.
+  const nameFontSize = `min(clamp(7px, 1vw, 16px), calc((100vh - 160px) / 5 / ${maxNamesPerColumn + 2}))`;
 
   if (invalid) {
     return (
@@ -377,14 +401,14 @@ export default function PublicCalendarPage() {
                       </span>
                     )}
                   </span>
-                  <div className="flex w-full gap-1 flex-1 min-h-0 overflow-hidden" style={{ fontSize: "clamp(10px,1vw,18px)" }}>
+                  <div className="flex w-full gap-1 flex-1 min-h-0 overflow-hidden" style={{ fontSize: nameFontSize }}>
                     <div className="flex-1 min-w-0 border-r border-border/40 pr-1 overflow-hidden">
                       <Sun className="w-[1em] h-[1em] text-amber-500 mb-0.5 shrink-0" />
-                      <div className="flex flex-col gap-0 leading-tight overflow-hidden">
+                      <div className="flex flex-col gap-0 leading-none overflow-hidden">
                         {dayNames.map((name) => {
                           const off = dayOffForKey[name];
                           return (
-                            <span key={name} className={`truncate ${
+                            <span key={name} className={`break-words ${
                               off && !off.isPartialDay ? "text-red-600 line-through font-medium"
                               : off?.isPartialDay ? "text-amber-700 font-medium"
                               : name === daySgtName ? "text-foreground font-bold"
@@ -393,17 +417,17 @@ export default function PublicCalendarPage() {
                           );
                         })}
                         {dailyDay.map((a) => (
-                          <span key={`da-${a.id}`} className="truncate text-green-700 font-medium">+{a.name}</span>
+                          <span key={`da-${a.id}`} className="break-words text-green-700 font-medium">+{a.name}</span>
                         ))}
                       </div>
                     </div>
                     <div className="flex-1 min-w-0 pl-1 overflow-hidden">
                       <Moon className="w-[1em] h-[1em] text-primary mb-0.5 shrink-0" />
-                      <div className="flex flex-col gap-0 leading-tight overflow-hidden">
+                      <div className="flex flex-col gap-0 leading-none overflow-hidden">
                         {nightNames.map((name) => {
                           const off = dayOffForKey[name];
                           return (
-                            <span key={name} className={`truncate ${
+                            <span key={name} className={`break-words ${
                               off && !off.isPartialDay ? "text-red-600 line-through font-medium"
                               : off?.isPartialDay ? "text-amber-700 font-medium"
                               : name === nightSgtName ? "text-foreground font-bold"
@@ -412,7 +436,7 @@ export default function PublicCalendarPage() {
                           );
                         })}
                         {dailyNight.map((a) => (
-                          <span key={`na-${a.id}`} className="truncate text-green-700 font-medium">+{a.name}</span>
+                          <span key={`na-${a.id}`} className="break-words text-green-700 font-medium">+{a.name}</span>
                         ))}
                       </div>
                     </div>
