@@ -18,7 +18,21 @@ const app: Express = express();
 app.set("trust proxy", 1);
 
 // Security headers
-app.use(helmet());
+// Allow Google Fonts (loaded in index.html) and self-hosted assets.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+      },
+    },
+  })
+);
 
 app.use(
   pinoHttp({
