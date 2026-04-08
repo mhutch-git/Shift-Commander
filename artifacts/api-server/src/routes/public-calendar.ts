@@ -1,25 +1,44 @@
-import { Router } from "express";
-import { db, shiftsTable, shiftAssignmentsTable, usersTable } from "@workspace/db";
-import { eq, and, lte, or, isNull, sql } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth";
-import {
-  getWorkingShiftLetter,
-  getDayName,
-  formatDate,
-  addDays,
-} from "../lib/schedule";
+import { Router, type Request, type Response, type NextFunction } from "express";
+import { db, shiftsTable, shiftAssignmentsTable, usersTable, dayOffRequestsTable, dailyAssignmentsTable } from "@workspace/db";
+import { eq, and, lte, or, isNull, sql, gte } from "drizzle-orm";
+import { getWorkingShiftLetter, getDayName, formatDate, addDays } from "../lib/schedule";
 
 const router = Router();
 
-type ShiftSummary = {
-  id: number;
-  name: string;
-  shiftType: string;
-  shiftLetter: string;
-  sergeantId: number | null;
-  sergeantName: string | null;
-  memberCount: number;
-  memberNames: string[];
+// ── Token middleware ──────────────────────────────────────────────────────────
+// Uses timing-safe comparison to prevent timing attacks on the token.
+function requireCalendarToken(req: Request, res: Response, next: NextFunction): void {
+  const token = process.env.PUBLIC_CALENDAR_TOKEN;
+  if (!token) {
+    res.status(503).json({ message: "Public calendar is not configured" });
+    return;
+  }
+  const provided = String(req.query.token ?? "");
+  if (provided.length !== token.length) {
+    res.status(401).json({ message: "Invalid token" });
+    return;
+  }
+  // Timing-safe byte comparison
+  const a = Buffer.from(provided);
+  const b = Buffer.from(token);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
+  if (diff !== 0) {
+    res.status(401).json({ message: "Invalid token" });
+    return;
+  }
+  next();
+}
+
+// ── Shared schedule helpers (mirrors schedule.ts) ─────────────────────────────
+type MemberRow = {
+  shiftId: number;
+  userId: number;
+  role: string;
+  firstName: string | null;
+  lastName: string | null;
+  effectiveDate: string;
+  endDate: string | null;
 };
 
 type ShiftRow = {
@@ -32,21 +51,6 @@ type ShiftRow = {
   sergeantLastName: string | null;
 };
 
-type MemberRow = {
-  shiftId: number;
-  userId: number;
-  role: string;
-  firstName: string | null;
-  lastName: string | null;
-  effectiveDate: string;
-  endDate: string | null;
-};
-
-/**
- * Fetch all shifts and all assignment records that overlap the date range.
- * Returns shift metadata and raw member rows so each schedule day can
- * filter who was actually active on that specific date.
- */
 async function fetchShiftData(rangeStart: string, rangeEnd: string) {
   const shifts = await db
     .select({
@@ -62,7 +66,6 @@ async function fetchShiftData(rangeStart: string, rangeEnd: string) {
     .leftJoin(usersTable, eq(shiftsTable.sergeantId, usersTable.id))
     .orderBy(shiftsTable.id);
 
-  // Fetch all assignments that overlap the requested date range
   const memberRows: MemberRow[] = await db
     .select({
       shiftId: shiftAssignmentsTable.shiftId,
@@ -91,12 +94,10 @@ function buildScheduleDay(date: Date, shifts: ShiftRow[], memberRows: MemberRow[
   const workingLetter = getWorkingShiftLetter(date);
   const dayOfWeek = date.getUTCDay();
 
-  // Filter members active on this specific date
   const activeMemberRows = memberRows.filter(
     (r) => r.effectiveDate <= dateStr && (r.endDate === null || r.endDate >= dateStr)
   );
 
-  // Group by shiftId
   const membersMap = new Map<number, string[]>();
   for (const row of activeMemberRows) {
     if (!membersMap.has(row.shiftId)) membersMap.set(row.shiftId, []);
@@ -138,23 +139,15 @@ function buildScheduleDay(date: Date, shifts: ShiftRow[], memberRows: MemberRow[
 
 const MAX_SCHEDULE_DAYS = 62;
 
-router.get("/schedule", requireAuth, async (req, res): Promise<void> => {
+// GET /api/public/schedule?token=xxx&start=YYYY-MM-DD&end=YYYY-MM-DD
+router.get("/public/schedule", requireCalendarToken, async (req, res): Promise<void> => {
   try {
     const { start, end } = req.query;
-
-    const startDate = start
-      ? new Date(`${start}T00:00:00.000Z`)
-      : new Date();
-    const endDate = end
-      ? new Date(`${end}T00:00:00.000Z`)
-      : addDays(startDate, 27);
+    const startDate = start ? new Date(`${start}T00:00:00.000Z`) : new Date();
+    const endDate = end ? new Date(`${end}T00:00:00.000Z`) : addDays(startDate, 27);
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       res.status(400).json({ message: "Invalid start or end date" });
-      return;
-    }
-    if (endDate < startDate) {
-      res.status(400).json({ message: "end must be on or after start" });
       return;
     }
 
@@ -162,7 +155,6 @@ router.get("/schedule", requireAuth, async (req, res): Promise<void> => {
       ? addDays(startDate, MAX_SCHEDULE_DAYS - 1)
       : endDate;
 
-    // Fetch shift data once for the entire range, then reuse across all days
     const { shifts, memberRows } = await fetchShiftData(formatDate(startDate), formatDate(clampedEnd));
 
     const days = [];
@@ -179,26 +171,58 @@ router.get("/schedule", requireAuth, async (req, res): Promise<void> => {
   }
 });
 
-router.get("/schedule/today", requireAuth, async (req, res): Promise<void> => {
+// GET /api/public/day-off-requests?token=xxx&start=YYYY-MM-DD&end=YYYY-MM-DD
+router.get("/public/day-off-requests", requireCalendarToken, async (req, res): Promise<void> => {
   try {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const todayStr = formatDate(today);
-    const workingLetter = getWorkingShiftLetter(today);
+    const { start, end } = req.query;
 
-    const { shifts, memberRows } = await fetchShiftData(todayStr, todayStr);
-    const dayData = buildScheduleDay(today, shifts, memberRows);
+    const conditions = [eq(dayOffRequestsTable.status, "approved")];
+    if (start) conditions.push(gte(dayOffRequestsTable.requestedDate, start as string));
+    if (end) conditions.push(lte(dayOffRequestsTable.requestedDate, end as string));
 
-    const workingShifts = dayData.shifts.filter((s) => s.isWorking);
-    const offShifts = dayData.shifts.filter((s) => !s.isWorking).map((s) => ({ ...s, memberCount: 0 }));
+    const rows = await db
+      .select({
+        id: dayOffRequestsTable.id,
+        requestedDate: dayOffRequestsTable.requestedDate,
+        isPartialDay: dayOffRequestsTable.isPartialDay,
+        partialStartTime: dayOffRequestsTable.partialStartTime,
+        partialEndTime: dayOffRequestsTable.partialEndTime,
+        requesterFirstName: usersTable.firstName,
+        requesterLastName: usersTable.lastName,
+      })
+      .from(dayOffRequestsTable)
+      .innerJoin(usersTable, eq(dayOffRequestsTable.userId, usersTable.id))
+      .where(and(...conditions));
 
-    res.json({
-      date: todayStr,
-      dayOfWeek: getDayName(today.getUTCDay()),
-      workingShiftLetter: workingLetter,
-      workingShifts,
-      offShifts,
-    });
+    res.json(rows);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// GET /api/public/daily-assignments?token=xxx&start=YYYY-MM-DD&end=YYYY-MM-DD
+router.get("/public/daily-assignments", requireCalendarToken, async (req, res): Promise<void> => {
+  try {
+    const { start, end } = req.query;
+
+    const conditions = [];
+    if (start) conditions.push(gte(dailyAssignmentsTable.assignedDate, start as string));
+    if (end) conditions.push(lte(dailyAssignmentsTable.assignedDate, end as string));
+
+    const rows = await db
+      .select({
+        id: dailyAssignmentsTable.id,
+        assignedDate: dailyAssignmentsTable.assignedDate,
+        shiftType: dailyAssignmentsTable.shiftType,
+        firstName: usersTable.firstName,
+        lastName: usersTable.lastName,
+      })
+      .from(dailyAssignmentsTable)
+      .innerJoin(usersTable, eq(dailyAssignmentsTable.userId, usersTable.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    res.json(rows);
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ message: "Internal server error" });

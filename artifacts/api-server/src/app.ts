@@ -1,8 +1,10 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
+import rateLimit from "express-rate-limit";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -14,6 +16,9 @@ const PgSession = ConnectPgSimple(session);
 const app: Express = express();
 
 app.set("trust proxy", 1);
+
+// Security headers
+app.use(helmet());
 
 app.use(
   pinoHttp({
@@ -44,6 +49,10 @@ const ALLOWED_ORIGINS_ENV = process.env.ALLOWED_ORIGINS;
 const allowedOrigins: string[] = ALLOWED_ORIGINS_ENV
   ? ALLOWED_ORIGINS_ENV.split(",").map((s) => s.trim())
   : [];
+
+if (allowedOrigins.length === 0 && process.env.NODE_ENV === "production") {
+  logger.warn("ALLOWED_ORIGINS is not set — all cross-origin requests are permitted. Set this to your frontend URL in production.");
+}
 
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true; // Same-origin requests have no Origin header
@@ -89,6 +98,7 @@ app.use(
       tableName: "session",
       createTableIfMissing: true,
     }),
+    name: "sc.sid",
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
@@ -100,6 +110,16 @@ app.use(
     },
   })
 );
+
+// Rate limit login attempts: 10 per 15 minutes per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many login attempts. Please try again later." },
+});
+app.use("/api/auth/login", loginLimiter);
 
 // API routes
 app.use("/api", router);

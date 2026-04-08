@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, shiftsTable, usersTable, shiftAssignmentsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router = Router();
@@ -24,7 +24,7 @@ router.get("/shifts", requireAuth, async (req, res): Promise<void> => {
           sergeantLastName = sergeant?.lastName ?? null;
         }
 
-        // Get members
+        // Get members — active only (endDate IS NULL)
         const members = await db
           .select({
             id: shiftAssignmentsTable.id,
@@ -36,7 +36,7 @@ router.get("/shifts", requireAuth, async (req, res): Promise<void> => {
           })
           .from(shiftAssignmentsTable)
           .innerJoin(usersTable, eq(shiftAssignmentsTable.userId, usersTable.id))
-          .where(eq(shiftAssignmentsTable.shiftId, shift.id));
+          .where(and(eq(shiftAssignmentsTable.shiftId, shift.id), isNull(shiftAssignmentsTable.endDate)));
 
         return {
           ...shift,
@@ -88,7 +88,7 @@ router.get("/shifts/:id", requireAuth, async (req, res): Promise<void> => {
       })
       .from(shiftAssignmentsTable)
       .innerJoin(usersTable, eq(shiftAssignmentsTable.userId, usersTable.id))
-      .where(eq(shiftAssignmentsTable.shiftId, id));
+      .where(and(eq(shiftAssignmentsTable.shiftId, id), isNull(shiftAssignmentsTable.endDate)));
 
     res.json({
       ...shift,

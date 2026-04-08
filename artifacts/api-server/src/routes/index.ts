@@ -9,9 +9,11 @@ import scheduleRouter from "./schedule";
 import dayOffRequestsRouter from "./day-off-requests";
 import dashboardRouter from "./dashboard";
 import notificationsRouter from "./notifications";
+import publicCalendarRouter from "./public-calendar";
 
 const router: IRouter = Router();
 
+router.use(publicCalendarRouter); // no auth — token-validated
 router.use(healthRouter);
 router.use(authRouter);
 router.use(usersRouter);

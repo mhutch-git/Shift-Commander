@@ -1,0 +1,71 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start API Server",
+            "type": "shell",
+            "command": "pnpm dev",
+            "options": {
+                "cwd": "${workspaceFolder}/artifacts/api-server"
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "tsx",
+                "pattern": {
+                    "regexp": "^(ERROR)\\s+(.*)$",
+                    "severity": 1,
+                    "message": 2
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*tsx watch.*$",
+                    "endsPattern": ".*Server listening.*"
+                }
+            },
+            "presentation": {
+                "group": "servers",
+                "reveal": "always",
+                "panel": "dedicated",
+                "label": "API Server"
+            }
+        },
+        {
+            "label": "Start Frontend",
+            "type": "shell",
+            "command": "pnpm dev",
+            "options": {
+                "cwd": "${workspaceFolder}/artifacts/shift-scheduler"
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "vite",
+                "pattern": {
+                    "regexp": "^(ERROR)\\s+(.*)$",
+                    "severity": 1,
+                    "message": 2
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*vite.*$",
+                    "endsPattern": ".*localhost:3000.*"
+                }
+            },
+            "presentation": {
+                "group": "servers",
+                "reveal": "always",
+                "panel": "dedicated",
+                "label": "Frontend"
+            }
+        },
+        {
+            "label": "Start All Servers",
+            "dependsOn": ["Start API Server", "Start Frontend"],
+            "dependsOrder": "parallel",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

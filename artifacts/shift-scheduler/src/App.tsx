@@ -13,6 +13,7 @@ import UsersPage from "@/pages/users";
 import NotificationsPage from "@/pages/notifications";
 import AssignToShiftPage from "@/pages/assign-to-shift";
 import NotFound from "@/pages/not-found";
+import PublicCalendarPage from "@/pages/public-calendar";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ const queryClient = new QueryClient({
 function Router() {
   return (
     <Switch>
+      <Route path="/cal/:token" component={PublicCalendarPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/">
         <ProtectedRoute>

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, shiftAssignmentsTable, usersTable, shiftsTable, notificationLogsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { sendEmail } from "../lib/email";
@@ -41,7 +41,7 @@ router.get("/shift-assignments", requireAuth, async (req, res): Promise<void> =>
       .innerJoin(usersTable, eq(shiftAssignmentsTable.userId, usersTable.id))
       .leftJoin(creatorUsersTable, eq(shiftAssignmentsTable.createdById, creatorUsersTable.id));
 
-    const conditions = [];
+    const conditions = [isNull(shiftAssignmentsTable.endDate)]; // only active assignments
     if (shiftId) {
       const parsedShift = parseInt(shiftId as string);
       if (isNaN(parsedShift)) { res.status(400).json({ message: "Invalid shiftId" }); return; }
@@ -53,9 +53,7 @@ router.get("/shift-assignments", requireAuth, async (req, res): Promise<void> =>
       conditions.push(eq(shiftAssignmentsTable.userId, parsedUser));
     }
 
-    const assignments = conditions.length > 0
-      ? await query.where(and(...conditions))
-      : await query;
+    const assignments = await query.where(and(...conditions));
 
     res.json(assignments);
   } catch (err) {
@@ -75,7 +73,8 @@ router.post("/shift-assignments", requireRole(["admin", "sergeant"]), async (req
 
     const parsedUserId = parseInt(userId);
     const parsedShiftId = parseInt(shiftId);
-    const assignedDate = effectiveDate || new Date().toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0]!;
+    const assignedDate = effectiveDate || today;
     const requesterId = req.session.userId!;
     const requesterRole = req.session.role ?? "";
 
@@ -108,10 +107,14 @@ router.post("/shift-assignments", requireRole(["admin", "sergeant"]), async (req
       .set({ shiftId: parsedShiftId })
       .where(eq(usersTable.id, parsedUserId));
 
-    // Remove any existing assignment for this user
+    // Soft-close any active assignment for this user (set endDate to yesterday)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0]!;
     await db
-      .delete(shiftAssignmentsTable)
-      .where(eq(shiftAssignmentsTable.userId, parsedUserId));
+      .update(shiftAssignmentsTable)
+      .set({ endDate: yesterdayStr })
+      .where(and(eq(shiftAssignmentsTable.userId, parsedUserId), isNull(shiftAssignmentsTable.endDate)));
 
     const [assignment] = await db
       .insert(shiftAssignmentsTable)
@@ -223,7 +226,14 @@ router.delete("/shift-assignments/:id", requireRole(["admin", "sergeant"]), asyn
       );
     }
 
-    await db.delete(shiftAssignmentsTable).where(eq(shiftAssignmentsTable.id, id));
+    // Soft-delete: set endDate to yesterday so past schedule remains accurate
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0]!;
+    await db
+      .update(shiftAssignmentsTable)
+      .set({ endDate: yesterdayStr })
+      .where(eq(shiftAssignmentsTable.id, id));
 
     res.json({ message: "Assignment removed" });
   } catch (err) {
