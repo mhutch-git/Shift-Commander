@@ -47,7 +47,7 @@
                 "background": {
                     "activeOnStart": true,
                     "beginsPattern": "^.*vite.*$",
-                    "endsPattern": ".*localhost:3000.*"
+                    "endsPattern": ".*localhost:4000.*"
                 }
             },
             "presentation": {

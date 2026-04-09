@@ -44,6 +44,12 @@ type DailyRow = {
   lastName: string | null;
 };
 
+type PublicScheduleResponse = {
+  days: ScheduleDay[];
+  dayOffRequests: DayOffRow[];
+  dailyAssignments: DailyRow[];
+};
+
 type DayOffInfo = {
   isPartialDay: boolean;
   partialStartTime?: string | null;
@@ -200,14 +206,12 @@ export default function PublicCalendarPage() {
   const params = useParams<{ token: string }>();
   const token = params.token ?? "";
 
-  // weekOffset: each step is 5 weeks (35 days); 0 = current week
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState<ScheduleDay | null>(null);
   const [invalid, setInvalid] = useState(false);
 
   const today = localDateStr(new Date());
 
-  // Start = Sunday of the current local week, offset by weekOffset * 35 days
   const start = useMemo(() => {
     const now = new Date();
     const sunday = new Date(now);
@@ -217,7 +221,6 @@ export default function PublicCalendarPage() {
 
   const end = useMemo(() => toDateStr(addDays(new Date(start + "T00:00:00Z"), 34)), [start]);
 
-  // Title: "Apr 6 – May 10, 2026"
   const title = useMemo(() => {
     const s = new Date(start + "T00:00:00Z");
     const e = new Date(end + "T00:00:00Z");
@@ -226,43 +229,30 @@ export default function PublicCalendarPage() {
     return `${startStr} – ${endStr}`;
   }, [start, end]);
 
-  // 35 date strings for the grid (Sun of week 1 through Sat of week 5)
   const days = useMemo(() => {
     const anchor = new Date(start + "T00:00:00Z");
     return Array.from({ length: 35 }, (_, i) => toDateStr(addDays(anchor, i)));
   }, [start]);
 
-  const schedule = useQuery({
-    queryKey: ["public-schedule", token, start, end],
-    queryFn: () => publicFetch<ScheduleDay[]>("schedule", token, { start, end }),
-    enabled: !!token,
-    retry: false,
-  });
-
-  const dayOffQuery = useQuery({
-    queryKey: ["public-day-off", token, start, end],
-    queryFn: () => publicFetch<DayOffRow[]>("day-off-requests", token, { start, end }),
-    enabled: !!token,
-    retry: false,
-  });
-
-  const dailyQuery = useQuery({
-    queryKey: ["public-daily", token, start, end],
-    queryFn: () => publicFetch<DailyRow[]>("daily-assignments", token, { start, end }),
+  // Single request returns schedule + day-off requests + daily assignments
+  const query = useQuery({
+    queryKey: ["public-calendar", token, start, end],
+    queryFn: () => publicFetch<PublicScheduleResponse>("schedule", token, { start, end }),
     enabled: !!token,
     retry: false,
   });
 
   useEffect(() => {
-    if (schedule.error) {
-      const status = (schedule.error as Error).message;
+    if (query.error) {
+      const status = (query.error as Error).message;
       if (status === "401" || status === "403") setInvalid(true);
     }
-  }, [schedule.error]);
+  }, [query.error]);
 
+  // date -> name -> DayOffInfo (same logic as schedule page)
   const dayOffMap = useMemo(() => {
     const map: Record<string, Record<string, DayOffInfo>> = {};
-    for (const req of dayOffQuery.data ?? []) {
+    for (const req of query.data?.dayOffRequests ?? []) {
       const date = req.requestedDate;
       if (!map[date]) map[date] = {};
       const initial = req.requesterFirstName ? req.requesterFirstName.charAt(0).toUpperCase() + "." : "";
@@ -274,45 +264,25 @@ export default function PublicCalendarPage() {
       };
     }
     return map;
-  }, [dayOffQuery.data]);
+  }, [query.data?.dayOffRequests]);
 
+  // date -> { day: [...], night: [...] } (same logic as schedule page)
   const dailyMap = useMemo(() => {
     const map: Record<string, { day: { id: number; name: string }[]; night: { id: number; name: string }[] }> = {};
-    for (const a of dailyQuery.data ?? []) {
+    for (const a of query.data?.dailyAssignments ?? []) {
       if (!map[a.assignedDate]) map[a.assignedDate] = { day: [], night: [] };
       const initial = a.firstName ? a.firstName.charAt(0).toUpperCase() + "." : "";
       const name = initial ? `${initial} ${a.lastName ?? ""}` : (a.lastName ?? "");
       map[a.assignedDate]![a.shiftType as "day" | "night"].push({ id: a.id, name });
     }
     return map;
-  }, [dailyQuery.data]);
+  }, [query.data?.dailyAssignments]);
 
   const scheduleMap = useMemo(() => {
     const map: Record<string, ScheduleDay> = {};
-    schedule.data?.forEach((day) => { map[day.date] = day; });
+    query.data?.days.forEach((day) => { map[day.date] = day; });
     return map;
-  }, [schedule.data]);
-
-  // Max names in any single shift column across all visible days — used to
-  // scale the font size so every name fits without truncation.
-  const maxNamesPerColumn = useMemo(() => {
-    let max = 1;
-    for (const key of days) {
-      const info = scheduleMap[key];
-      if (!info) continue;
-      const dayShift = info.shifts.find((s) => s.shiftType === "day" && s.isWorking);
-      const nightShift = info.shifts.find((s) => s.shiftType === "night" && s.isWorking);
-      const dayTotal = (dayShift?.memberNames.length ?? 0) + (dailyMap[key]?.day.length ?? 0);
-      const nightTotal = (nightShift?.memberNames.length ?? 0) + (dailyMap[key]?.night.length ?? 0);
-      max = Math.max(max, dayTotal, nightTotal);
-    }
-    return max;
-  }, [days, scheduleMap, dailyMap]);
-
-  // Font size for names: fit maxNamesPerColumn rows in the available cell height.
-  // Cell height ≈ (100vh - 160px) / 5; each name row needs ~1.15 × fontSize.
-  // min() constrains by both viewport width (1vw) and viewport height.
-  const nameFontSize = `min(clamp(7px, 1vw, 16px), calc((100vh - 160px) / 5 / ${maxNamesPerColumn + 2}))`;
+  }, [query.data?.days]);
 
   if (invalid) {
     return (
@@ -361,8 +331,8 @@ export default function PublicCalendarPage() {
           ))}
         </div>
 
-        {/* 5-week grid: always 35 cells, 5 equal rows, no empty leading cells */}
-        {schedule.isLoading ? (
+        {/* 5-week grid */}
+        {query.isLoading ? (
           <div className="flex-1 grid grid-cols-7 gap-1" style={{ gridTemplateRows: "repeat(5, 1fr)" }}>
             {Array(35).fill(0).map((_, i) => <Skeleton key={i} className="rounded" />)}
           </div>
@@ -401,14 +371,14 @@ export default function PublicCalendarPage() {
                       </span>
                     )}
                   </span>
-                  <div className="flex w-full gap-1 flex-1 min-h-0 overflow-hidden" style={{ fontSize: nameFontSize }}>
+                  <div className="flex w-full gap-1 flex-1 min-h-0 overflow-hidden" style={{ fontSize: "clamp(10px,1vw,18px)" }}>
                     <div className="flex-1 min-w-0 border-r border-border/40 pr-1 overflow-hidden">
                       <Sun className="w-[1em] h-[1em] text-amber-500 mb-0.5 shrink-0" />
-                      <div className="flex flex-col gap-0 leading-none overflow-hidden">
+                      <div className="flex flex-col gap-0 leading-tight overflow-hidden">
                         {dayNames.map((name) => {
                           const off = dayOffForKey[name];
                           return (
-                            <span key={name} className={`break-words ${
+                            <span key={name} className={`block truncate ${
                               off && !off.isPartialDay ? "text-red-600 line-through font-medium"
                               : off?.isPartialDay ? "text-amber-700 font-medium"
                               : name === daySgtName ? "text-foreground font-bold"
@@ -417,17 +387,17 @@ export default function PublicCalendarPage() {
                           );
                         })}
                         {dailyDay.map((a) => (
-                          <span key={`da-${a.id}`} className="break-words text-green-700 font-medium">+{a.name}</span>
+                          <span key={`da-${a.id}`} className="block truncate text-green-700 font-medium">+{a.name}</span>
                         ))}
                       </div>
                     </div>
                     <div className="flex-1 min-w-0 pl-1 overflow-hidden">
                       <Moon className="w-[1em] h-[1em] text-primary mb-0.5 shrink-0" />
-                      <div className="flex flex-col gap-0 leading-none overflow-hidden">
+                      <div className="flex flex-col gap-0 leading-tight overflow-hidden">
                         {nightNames.map((name) => {
                           const off = dayOffForKey[name];
                           return (
-                            <span key={name} className={`break-words ${
+                            <span key={name} className={`block truncate ${
                               off && !off.isPartialDay ? "text-red-600 line-through font-medium"
                               : off?.isPartialDay ? "text-amber-700 font-medium"
                               : name === nightSgtName ? "text-foreground font-bold"
@@ -436,7 +406,7 @@ export default function PublicCalendarPage() {
                           );
                         })}
                         {dailyNight.map((a) => (
-                          <span key={`na-${a.id}`} className="break-words text-green-700 font-medium">+{a.name}</span>
+                          <span key={`na-${a.id}`} className="block truncate text-green-700 font-medium">+{a.name}</span>
                         ))}
                       </div>
                     </div>

@@ -140,6 +140,7 @@ function buildScheduleDay(date: Date, shifts: ShiftRow[], memberRows: MemberRow[
 const MAX_SCHEDULE_DAYS = 62;
 
 // GET /api/public/schedule?token=xxx&start=YYYY-MM-DD&end=YYYY-MM-DD
+// Returns { days, dayOffRequests, dailyAssignments } in one request.
 router.get("/public/schedule", requireCalendarToken, async (req, res): Promise<void> => {
   try {
     const { start, end } = req.query;
@@ -155,7 +156,41 @@ router.get("/public/schedule", requireCalendarToken, async (req, res): Promise<v
       ? addDays(startDate, MAX_SCHEDULE_DAYS - 1)
       : endDate;
 
-    const { shifts, memberRows } = await fetchShiftData(formatDate(startDate), formatDate(clampedEnd));
+    const rangeStart = formatDate(startDate);
+    const rangeEnd = formatDate(clampedEnd);
+
+    const [{ shifts, memberRows }, dayOffRequests, dailyAssignments] = await Promise.all([
+      fetchShiftData(rangeStart, rangeEnd),
+      db.select({
+          id: dayOffRequestsTable.id,
+          requestedDate: dayOffRequestsTable.requestedDate,
+          isPartialDay: dayOffRequestsTable.isPartialDay,
+          partialStartTime: dayOffRequestsTable.partialStartTime,
+          partialEndTime: dayOffRequestsTable.partialEndTime,
+          requesterFirstName: usersTable.firstName,
+          requesterLastName: usersTable.lastName,
+        })
+        .from(dayOffRequestsTable)
+        .innerJoin(usersTable, eq(dayOffRequestsTable.userId, usersTable.id))
+        .where(and(
+          eq(dayOffRequestsTable.status, "approved"),
+          gte(dayOffRequestsTable.requestedDate, rangeStart),
+          lte(dayOffRequestsTable.requestedDate, rangeEnd),
+        )),
+      db.select({
+          id: dailyAssignmentsTable.id,
+          assignedDate: dailyAssignmentsTable.assignedDate,
+          shiftType: dailyAssignmentsTable.shiftType,
+          firstName: usersTable.firstName,
+          lastName: usersTable.lastName,
+        })
+        .from(dailyAssignmentsTable)
+        .innerJoin(usersTable, eq(dailyAssignmentsTable.userId, usersTable.id))
+        .where(and(
+          gte(dailyAssignmentsTable.assignedDate, rangeStart),
+          lte(dailyAssignmentsTable.assignedDate, rangeEnd),
+        )),
+    ]);
 
     const days = [];
     let current = startDate;
@@ -164,7 +199,7 @@ router.get("/public/schedule", requireCalendarToken, async (req, res): Promise<v
       current = addDays(current, 1);
     }
 
-    res.json(days);
+    res.json({ days, dayOffRequests, dailyAssignments });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ message: "Internal server error" });

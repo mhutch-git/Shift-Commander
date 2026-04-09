@@ -10,7 +10,7 @@ const isReplit = process.env.REPL_ID !== undefined;
 const isDevMode = process.env.NODE_ENV !== "production";
 
 const rawPort = process.env.PORT;
-const port = rawPort ? Number(rawPort) : 3000;
+const port = rawPort ? Number(rawPort) : 4000;
 
 const basePath = process.env.BASE_PATH ?? "/";
 
@@ -55,7 +55,7 @@ export default defineConfig({
     allowedHosts: true,
     // In local dev (non-Replit), proxy /api calls to the Express API server
     ...(isDevMode && !isReplit
-      ? { proxy: { "/api": { target: "http://localhost:3001", changeOrigin: true } } }
+      ? { proxy: { "/api": { target: "http://localhost:4001", changeOrigin: true } } }
       : {}),
     fs: {
       strict: true,
