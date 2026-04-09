@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -209,6 +209,16 @@ export default function PublicCalendarPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState<ScheduleDay | null>(null);
   const [invalid, setInvalid] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridHeight, setGridHeight] = useState(0);
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      setGridHeight(entries[0]?.contentRect.height ?? 0);
+    });
+    ro.observe(gridRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const today = localDateStr(new Date());
 
@@ -284,6 +294,30 @@ export default function PublicCalendarPage() {
     return map;
   }, [query.data?.days]);
 
+  // Max names in any single shift column across all 35 days
+  const maxNamesPerColumn = useMemo(() => {
+    let max = 1;
+    for (const key of days) {
+      const info = scheduleMap[key];
+      if (!info) continue;
+      const dayShift = info.shifts.find((s) => s.shiftType === "day" && s.isWorking);
+      const nightShift = info.shifts.find((s) => s.shiftType === "night" && s.isWorking);
+      const dayTotal = (dayShift?.memberNames.length ?? 0) + (dailyMap[key]?.day.length ?? 0);
+      const nightTotal = (nightShift?.memberNames.length ?? 0) + (dailyMap[key]?.night.length ?? 0);
+      max = Math.max(max, dayTotal, nightTotal);
+    }
+    return max;
+  }, [days, scheduleMap, dailyMap]);
+
+  // Use the measured grid height so font size is exact regardless of screen size.
+  // Cell height = gridHeight / 5 rows.
+  // Each name needs fontSize * 1.25 (leading-tight). Reserve 2 slots for date + icon row.
+  // No minimum clamp — let it go as small as needed to show every name.
+  const cellHeight = gridHeight > 0 ? gridHeight / 5 : 0;
+  const nameFontSizePx = cellHeight > 0
+    ? Math.max(6, Math.floor(cellHeight / (maxNamesPerColumn + 2) / 1.25))
+    : 11;
+
   if (invalid) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -297,7 +331,7 @@ export default function PublicCalendarPage() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col bg-background">
+    <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
 
       {/* Nav bar */}
       <div className="shrink-0 flex items-center justify-between px-4 py-2 border-b border-border bg-card">
@@ -321,23 +355,23 @@ export default function PublicCalendarPage() {
         <div className="flex items-center gap-1.5"><span className="text-green-700 font-bold">+</span><span className="text-green-700">Additional</span></div>
       </div>
 
-      {/* Calendar */}
-      <div className="flex-1 flex flex-col overflow-hidden p-2 gap-1">
+      {/* Calendar — fills remaining height, equal rows, font scales to fit all names */}
+      <div className="flex-1 flex flex-col min-h-0 p-2 gap-1">
 
         {/* Day-of-week headers */}
         <div className="shrink-0 grid grid-cols-7 gap-1">
           {DAY_NAMES.map((d) => (
-            <div key={d} className="text-center font-semibold text-muted-foreground py-1" style={{ fontSize: "clamp(11px,1.1vw,20px)" }}>{d}</div>
+            <div key={d} className="text-center font-semibold text-muted-foreground py-0.5" style={{ fontSize: "clamp(10px,1vw,18px)" }}>{d}</div>
           ))}
         </div>
 
-        {/* 5-week grid */}
+        {/* 5-week grid: equal rows fill remaining height */}
         {query.isLoading ? (
           <div className="flex-1 grid grid-cols-7 gap-1" style={{ gridTemplateRows: "repeat(5, 1fr)" }}>
             {Array(35).fill(0).map((_, i) => <Skeleton key={i} className="rounded" />)}
           </div>
         ) : (
-          <div className="flex-1 grid grid-cols-7 gap-1 min-h-0" style={{ gridTemplateRows: "repeat(5, 1fr)" }}>
+          <div ref={gridRef} className="flex-1 grid grid-cols-7 gap-1 min-h-0" style={{ gridTemplateRows: "repeat(5, 1fr)" }}>
             {days.map((key) => {
               const d = new Date(key + "T00:00:00Z");
               const info = scheduleMap[key];
@@ -356,25 +390,25 @@ export default function PublicCalendarPage() {
                 <button
                   key={key}
                   onClick={() => setSelectedDay(info || { date: key, dayOfWeek: "", workingShiftLetter: null, shifts: [] })}
-                  className={`flex flex-col items-start p-2 rounded-md border text-left transition-colors focus:outline-none overflow-hidden
+                  className={`flex flex-col items-start p-1.5 rounded-md border text-left transition-colors focus:outline-none overflow-hidden
                     ${letter === "a" ? "bg-primary/10 border-primary/30 hover:bg-primary/20" : ""}
                     ${letter === "b" ? "bg-accent/10 border-accent/30 hover:bg-accent/20" : ""}
                     ${!letter ? "bg-muted/30 border-border hover:bg-muted/50" : ""}
                     ${isToday ? "ring-2 ring-primary ring-offset-1" : ""}
                   `}
                 >
-                  <span className={`font-bold leading-none mb-1 shrink-0 ${isToday ? "text-primary" : "text-foreground"}`} style={{ fontSize: "clamp(12px,1.3vw,24px)" }}>
+                  <span className={`font-bold leading-none mb-0.5 shrink-0 ${isToday ? "text-primary" : "text-foreground"}`} style={{ fontSize: `${Math.round(nameFontSizePx * 1.4)}px` }}>
                     {d.getUTCDate()}
                     {letter && (
-                      <span className={`ml-1 font-bold uppercase ${letter === "a" ? "text-primary" : "text-amber-700"}`} style={{ fontSize: "clamp(9px,0.9vw,16px)" }}>
+                      <span className={`ml-1 font-bold uppercase ${letter === "a" ? "text-primary" : "text-amber-700"}`} style={{ fontSize: `${Math.round(nameFontSizePx * 1.0)}px` }}>
                         {letter.toUpperCase()}
                       </span>
                     )}
                   </span>
-                  <div className="flex w-full gap-1 flex-1 min-h-0 overflow-hidden" style={{ fontSize: "clamp(10px,1vw,18px)" }}>
+                  <div className="flex w-full gap-1 flex-1 min-h-0" style={{ fontSize: `${nameFontSizePx}px` }}>
                     <div className="flex-1 min-w-0 border-r border-border/40 pr-1 overflow-hidden">
                       <Sun className="w-[1em] h-[1em] text-amber-500 mb-0.5 shrink-0" />
-                      <div className="flex flex-col gap-0 leading-tight overflow-hidden">
+                      <div className="flex flex-col gap-0 leading-tight">
                         {dayNames.map((name) => {
                           const off = dayOffForKey[name];
                           return (
@@ -393,7 +427,7 @@ export default function PublicCalendarPage() {
                     </div>
                     <div className="flex-1 min-w-0 pl-1 overflow-hidden">
                       <Moon className="w-[1em] h-[1em] text-primary mb-0.5 shrink-0" />
-                      <div className="flex flex-col gap-0 leading-tight overflow-hidden">
+                      <div className="flex flex-col gap-0 leading-tight">
                         {nightNames.map((name) => {
                           const off = dayOffForKey[name];
                           return (
