@@ -149,6 +149,19 @@ if (process.env.NODE_ENV === "production") {
     process.env.FRONTEND_DIST_PATH ??
     path.resolve(process.cwd(), "artifacts/shift-scheduler/dist/public");
 
+  import("fs").then(({ existsSync, readdirSync }) => {
+    const exists = existsSync(frontendDist);
+    logger.info({ frontendDist, exists, cwd: process.cwd() }, "Frontend dist path");
+    if (exists) {
+      try {
+        const files = readdirSync(frontendDist);
+        logger.info({ files }, "Frontend dist contents");
+      } catch (e) {
+        logger.warn(e, "Could not read frontend dist");
+      }
+    }
+  });
+
   app.use(express.static(frontendDist));
 
   app.get("*splat", (_req, res) => {
