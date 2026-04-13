@@ -83,18 +83,26 @@ function isAllowedOrigin(origin: string | undefined): boolean {
   return false;
 }
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (isAllowedOrigin(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: origin '${origin}' not allowed`));
-      }
-    },
-    credentials: true,
-  })
-);
+// Apply CORS only to /api routes — static files (CSS, JS, HTML) are same-origin
+// and don't need CORS headers. Scoping here prevents CORS from rejecting requests
+// with Origin: null (e.g. from sandboxed iframes like Dakboard).
+
+// Public endpoints are token-protected — allow any origin so they work from
+// sandboxed iframes (Dakboard) where the page origin becomes "null".
+app.use("/api/public", cors({ origin: "*", credentials: false }));
+
+// All other API routes use the configured origin allowlist.
+const corsMiddleware = cors({
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    }
+  },
+  credentials: true,
+});
+app.use("/api", corsMiddleware);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
