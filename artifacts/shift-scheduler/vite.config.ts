@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import postcssCascadeLayers from "@csstools/postcss-cascade-layers";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,6 +46,13 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   root: path.resolve(__dirname),
+  css: {
+    // Unwrap @layer blocks so the styles work in older Chromium versions
+    // (Dakboard display devices) that don't support CSS cascade layers (pre-Chrome 99).
+    postcss: {
+      plugins: [postcssCascadeLayers()],
+    },
+  },
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
