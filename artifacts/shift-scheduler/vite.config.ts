@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import postcssCascadeLayers from "@csstools/postcss-cascade-layers";
+import postcssOklabFunction from "@csstools/postcss-oklab-function";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,7 +51,12 @@ export default defineConfig({
     // Unwrap @layer blocks so the styles work in older Chromium versions
     // (Dakboard display devices) that don't support CSS cascade layers (pre-Chrome 99).
     postcss: {
-      plugins: [postcssCascadeLayers()],
+      plugins: [
+        // Convert oklch() to rgb() for Chromium versions before Chrome 111
+        postcssOklabFunction({ preserve: false }),
+        // Unwrap @layer blocks for Chromium versions before Chrome 99
+        postcssCascadeLayers(),
+      ],
     },
   },
   build: {
