@@ -170,9 +170,16 @@ if (process.env.NODE_ENV === "production") {
     }
   });
 
-  app.use(express.static(frontendDist));
+  // setHeaders adds ACAO so browsers in sandboxed iframes (Dakboard) can load
+  // assets that Vite marks with crossorigin (which forces CORS fetch mode).
+  app.use(express.static(frontendDist, {
+    setHeaders(res) {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+    },
+  }));
 
   app.get("*splat", (_req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
