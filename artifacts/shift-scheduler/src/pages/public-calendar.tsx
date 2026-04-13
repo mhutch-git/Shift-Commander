@@ -205,10 +205,18 @@ function DaySheet({
 export default function PublicCalendarPage() {
   const params = useParams<{ token: string }>();
   const token = params.token ?? "";
+  const isKiosk = new URLSearchParams(window.location.search).has("kiosk");
 
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState<ScheduleDay | null>(null);
   const [invalid, setInvalid] = useState(false);
+
+  // Auto-refresh every 5 minutes in kiosk mode
+  useEffect(() => {
+    if (!isKiosk) return;
+    const id = setInterval(() => window.location.reload(), 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [isKiosk]);
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
   useEffect(() => {
@@ -334,26 +342,32 @@ export default function PublicCalendarPage() {
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
 
       {/* Nav bar */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-2 border-b border-border bg-card">
-        <Button variant="outline" size="icon" onClick={() => setWeekOffset(o => o - 1)}>
-          <ChevronLeft style={{ width: "clamp(16px,1.5vw,28px)", height: "clamp(16px,1.5vw,28px)" }} />
-        </Button>
-        <span className="font-bold text-foreground tracking-tight" style={{ fontSize: "clamp(18px,2.2vw,42px)" }}>{title}</span>
-        <Button variant="outline" size="icon" onClick={() => setWeekOffset(o => o + 1)}>
-          <ChevronRight style={{ width: "clamp(16px,1.5vw,28px)", height: "clamp(16px,1.5vw,28px)" }} />
-        </Button>
-      </div>
-
-      {/* Legend */}
-      <div className="shrink-0 flex flex-wrap items-center gap-5 px-4 py-1.5 border-b border-border bg-card text-muted-foreground" style={{ fontSize: "clamp(11px,1vw,18px)" }}>
-        <div className="flex items-center gap-1.5"><Sun className="w-[1em] h-[1em] text-amber-500" /><span>Day</span></div>
-        <div className="flex items-center gap-1.5"><Moon className="w-[1em] h-[1em] text-primary" /><span>Night</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-[1em] h-[1em] rounded-sm bg-primary/20 border border-primary/40" /><span>Shift A</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-[1em] h-[1em] rounded-sm bg-accent/20 border border-accent/40" /><span>Shift B</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-[1em] h-[1em] rounded-sm bg-red-100 border border-red-300" /><span className="text-red-600">Day Off</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-[1em] h-[1em] rounded-sm bg-amber-100 border border-amber-300" /><span className="text-amber-700">Partial</span></div>
-        <div className="flex items-center gap-1.5"><span className="text-green-700 font-bold">+</span><span className="text-green-700">Additional</span></div>
-      </div>
+      {isKiosk ? (
+        <div className="shrink-0 flex items-center justify-center px-4 py-1 border-b border-border bg-card">
+          <span className="font-bold text-foreground tracking-tight" style={{ fontSize: "clamp(14px,1.4vw,28px)" }}>{title}</span>
+        </div>
+      ) : (
+        <>
+          <div className="shrink-0 flex items-center justify-between px-4 py-2 border-b border-border bg-card">
+            <Button variant="outline" size="icon" onClick={() => setWeekOffset(o => o - 1)}>
+              <ChevronLeft style={{ width: "clamp(16px,1.5vw,28px)", height: "clamp(16px,1.5vw,28px)" }} />
+            </Button>
+            <span className="font-bold text-foreground tracking-tight" style={{ fontSize: "clamp(18px,2.2vw,42px)" }}>{title}</span>
+            <Button variant="outline" size="icon" onClick={() => setWeekOffset(o => o + 1)}>
+              <ChevronRight style={{ width: "clamp(16px,1.5vw,28px)", height: "clamp(16px,1.5vw,28px)" }} />
+            </Button>
+          </div>
+          <div className="shrink-0 flex flex-wrap items-center gap-5 px-4 py-1.5 border-b border-border bg-card text-muted-foreground" style={{ fontSize: "clamp(11px,1vw,18px)" }}>
+            <div className="flex items-center gap-1.5"><Sun className="w-[1em] h-[1em] text-amber-500" /><span>Day</span></div>
+            <div className="flex items-center gap-1.5"><Moon className="w-[1em] h-[1em] text-primary" /><span>Night</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-[1em] h-[1em] rounded-sm bg-primary/20 border border-primary/40" /><span>Shift A</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-[1em] h-[1em] rounded-sm bg-accent/20 border border-accent/40" /><span>Shift B</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-[1em] h-[1em] rounded-sm bg-red-100 border border-red-300" /><span className="text-red-600">Day Off</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-[1em] h-[1em] rounded-sm bg-amber-100 border border-amber-300" /><span className="text-amber-700">Partial</span></div>
+            <div className="flex items-center gap-1.5"><span className="text-green-700 font-bold">+</span><span className="text-green-700">Additional</span></div>
+          </div>
+        </>
+      )}
 
       {/* Calendar — fills remaining height, equal rows, font scales to fit all names */}
       <div className="flex-1 flex flex-col min-h-0 p-2 gap-1">
