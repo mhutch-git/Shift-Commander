@@ -400,16 +400,26 @@ export default function PublicCalendarPage() {
               const nightSgtName = nightShift?.sergeantName ?? null;
               const dailyDay = dailyMap[key]?.day ?? [];
               const dailyNight = dailyMap[key]?.night ?? [];
+              // Explicit hsla() values match the theme variables (--primary: 224 73% 33%,
+              // --accent: 45 93% 47%, --muted: 210 20% 95%, --border: 214 20% 85%).
+              // Inline styles bypass color-mix() entirely so they render correctly in
+              // older Chromium (Dakboard display devices) which doesn't support color-mix().
+              const cellBg =
+                letter === "a" ? "hsla(224,73%,33%,0.10)"
+                : letter === "b" ? "hsla(45,93%,47%,0.10)"
+                : "hsla(210,20%,95%,0.30)";
+              const cellBorder =
+                letter === "a" ? "hsla(224,73%,33%,0.30)"
+                : letter === "b" ? "hsla(45,93%,47%,0.30)"
+                : "hsl(214,20%,85%)";
               return (
                 <button
                   key={key}
                   onClick={() => setSelectedDay(info || { date: key, dayOfWeek: "", workingShiftLetter: null, shifts: [] })}
                   className={`flex flex-col items-start p-1.5 rounded-md border text-left transition-colors focus:outline-none overflow-hidden
-                    ${letter === "a" ? "bg-primary/10 border-primary/30 hover:bg-primary/20" : ""}
-                    ${letter === "b" ? "bg-accent/10 border-accent/30 hover:bg-accent/20" : ""}
-                    ${!letter ? "bg-muted/30 border-border hover:bg-muted/50" : ""}
                     ${isToday ? "ring-2 ring-primary ring-offset-1" : ""}
                   `}
+                  style={{ backgroundColor: cellBg, borderColor: cellBorder }}
                 >
                   <span className={`font-bold leading-none mb-0.5 shrink-0 ${isToday ? "text-primary" : "text-foreground"}`} style={{ fontSize: `${Math.round(nameFontSizePx * 1.4)}px` }}>
                     {d.getUTCDate()}
