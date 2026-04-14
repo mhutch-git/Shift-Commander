@@ -204,7 +204,9 @@ function DaySheet({
 
 export default function PublicCalendarPage() {
   const params = useParams<{ token: string }>();
-  const token = params.token ?? "";
+  // Wouter can include the query string in the path param (e.g. "TOKEN?kiosk").
+  // Strip anything after "?" so the token sent to the API is always clean.
+  const token = (params.token ?? "").split("?")[0]!;
   const isKiosk = new URLSearchParams(window.location.search).has("kiosk");
 
   const [weekOffset, setWeekOffset] = useState(0);
